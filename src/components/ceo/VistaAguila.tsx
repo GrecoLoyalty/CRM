@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
+import Link from "next/link";
+
+interface ClienteResumen {
+  id: string;
+  nombre: string;
+  subtitulo: string;
+}
 
 interface Props {
   conteoPorDepto: Record<string, number>;
   cuellosBotella: Record<string, number>;
+  clientesPorDepto: Record<string, ClienteResumen[]>;
 }
 
 const NODOS = [
@@ -21,8 +29,9 @@ const ENLACES = [
   ["analisis", "desarrollo"],
 ];
 
-export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
+export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPorDepto }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [deptoSeleccionado, setDeptoSeleccionado] = useState<string | null>(null);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -44,15 +53,9 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
         .attr("stroke", "#232B3F")
         .attr("stroke-width", 3);
 
-      // Partículas animadas que viajan del origen al destino, representan clientes fluyendo
       const numParticulas = Math.min(4, Math.max(1, conteoPorDepto[destinoId] || 1));
       for (let i = 0; i < numParticulas; i++) {
-        const particula = g
-          .append("circle")
-          .attr("r", 3)
-          .attr("fill", "#3AA7A1")
-          .attr("opacity", 0.85);
-
+        const particula = g.append("circle").attr("r", 3).attr("fill", "#3AA7A1").attr("opacity", 0.85);
         const duracion = 2800;
         const retraso = (duracion / numParticulas) * i;
 
@@ -72,20 +75,23 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
       }
     });
 
-    // Nodos
+    // Nodos — ahora clicables
     const nodo = g
       .selectAll("g.nodo")
       .data(NODOS)
       .enter()
       .append("g")
-      .attr("transform", (d) => `translate(${d.x},${d.y})`);
+      .attr("transform", (d) => `translate(${d.x},${d.y})`)
+      .style("cursor", "pointer")
+      .on("click", (_event, d) => setDeptoSeleccionado((actual) => (actual === d.id ? null : d.id)));
 
     nodo
       .append("circle")
       .attr("r", 42)
       .attr("fill", "#12161F")
       .attr("stroke", (d) => (cuellosBotella[d.id] > 0 ? "#EF4444" : "#3AA7A1"))
-      .attr("stroke-width", 2);
+      .attr("stroke-width", 2)
+      .attr("class", "transition-all");
 
     nodo
       .append("text")
@@ -95,6 +101,7 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
       .attr("font-family", "Space Grotesk, sans-serif")
       .attr("font-size", 22)
       .attr("font-weight", 600)
+      .style("pointer-events", "none")
       .text((d) => conteoPorDepto[d.id] ?? 0);
 
     nodo
@@ -103,6 +110,7 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
       .attr("dy", 16)
       .attr("fill", "#6B7280")
       .attr("font-size", 9)
+      .style("pointer-events", "none")
       .text("clientes");
 
     nodo
@@ -112,9 +120,9 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
       .attr("fill", "#D1D5DB")
       .attr("font-size", 12)
       .attr("font-weight", 500)
+      .style("pointer-events", "none")
       .text((d) => d.label);
 
-    // Indicador de cuello de botella
     nodo
       .filter((d) => cuellosBotella[d.id] > 0)
       .append("text")
@@ -122,12 +130,47 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella }: Props) {
       .attr("dy", 78)
       .attr("fill", "#EF4444")
       .attr("font-size", 10)
+      .style("pointer-events", "none")
       .text((d) => `⚠ ${cuellosBotella[d.id]} vencida(s)`);
   }, [conteoPorDepto, cuellosBotella]);
+
+  const nodoActivo = NODOS.find((n) => n.id === deptoSeleccionado);
+  const listaActiva = deptoSeleccionado ? clientesPorDepto[deptoSeleccionado] || [] : [];
 
   return (
     <div className="card p-6 overflow-x-auto">
       <svg ref={svgRef} viewBox="0 0 680 400" className="w-full min-w-[600px] h-[380px]" />
+
+      {deptoSeleccionado && (
+        <div className="mt-4 border-t border-base-600 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display font-semibold text-sm">
+              {nodoActivo?.label} — {listaActiva.length} cliente(s)
+            </h3>
+            <button onClick={() => setDeptoSeleccionado(null)} className="text-xs text-gray-500 hover:text-gray-300">
+              Cerrar ✕
+            </button>
+          </div>
+
+          {listaActiva.length === 0 && <p className="text-sm text-gray-500">No hay clientes activos en este departamento ahora mismo.</p>}
+
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {listaActiva.map((c) => (
+              <Link
+                key={c.id}
+                href={`/dashboard/cliente/${c.id}`}
+                className="flex items-center justify-between bg-base-900 border border-base-600 rounded-lg px-3 py-2 hover:border-accent/50 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{c.nombre}</p>
+                  <p className="text-xs text-gray-500 truncate">{c.subtitulo}</p>
+                </div>
+                <span className="text-xs text-accent-soft shrink-0 ml-2">Ver ficha →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -29,7 +29,6 @@ export default async function CeoPage() {
   };
 
   // Facturación real del mes — placeholder simple basado en clientes entregados este mes.
-  // Ajustar con la lógica de facturación real del negocio cuando exista un módulo de cobros.
   const { count: clientesNuevosMes } = await supabase
     .from("clientes")
     .select("*", { count: "exact", head: true })
@@ -41,16 +40,48 @@ export default async function CeoPage() {
     .neq("estado", "HISTORICO")
     .order("updated_at", { ascending: false });
 
+  // --- Detalle por departamento para la Vista de Águila interactiva ---
+  const [
+    { data: prospectosVentas },
+    { data: clientesAnalisis },
+    { data: tareasEstetica },
+    { data: tareasDesarrollo },
+  ] = await Promise.all([
+    supabase.from("clientes").select("id, nombre_empresa, necesidad_detectada").eq("estado", "PROSPECTO").order("created_at"),
+    supabase.from("clientes").select("id, nombre_empresa, estado, briefing_texto").in("estado", ["TRANSFERIDO", "EN_ANALISIS"]).order("created_at"),
+    supabase.from("tareas").select("cliente_id, titulo, estado, clientes(id, nombre_empresa)").eq("depto", "estetica").neq("estado", "PUBLICADO").order("created_at"),
+    supabase.from("tareas").select("cliente_id, titulo, estado, clientes(id, nombre_empresa)").eq("depto", "desarrollo").neq("estado", "COMPLETADA").order("created_at"),
+  ]);
+
+  const clientesPorDepto = {
+    ventas: (prospectosVentas || []).map((c) => ({
+      id: c.id,
+      nombre: c.nombre_empresa,
+      subtitulo: c.necesidad_detectada?.slice(0, 60) || "Prospecto nuevo",
+    })),
+    analisis: (clientesAnalisis || []).map((c) => ({
+      id: c.id,
+      nombre: c.nombre_empresa,
+      subtitulo: c.briefing_texto ? "Briefing en progreso" : "Esperando briefing",
+    })),
+    estetica: (tareasEstetica || [])
+      .filter((t: any) => t.clientes)
+      .map((t: any) => ({ id: t.clientes.id, nombre: t.clientes.nombre_empresa, subtitulo: `${t.titulo} — ${t.estado}` })),
+    desarrollo: (tareasDesarrollo || [])
+      .filter((t: any) => t.clientes)
+      .map((t: any) => ({ id: t.clientes.id, nombre: t.clientes.nombre_empresa, subtitulo: `${t.titulo} — ${t.estado}` })),
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <div>
         <h1 className="text-2xl font-display font-semibold">Vista de Águila</h1>
-        <p className="text-gray-500 text-sm mt-1">Panel de Control Ejecutivo — flujo global de clientes en tiempo real.</p>
+        <p className="text-gray-500 text-sm mt-1">Panel de Control Ejecutivo — flujo global de clientes en tiempo real. Click en un departamento para ver quién está ahí.</p>
       </div>
 
       {meta && <BarraMetaGlobal meta={meta} clientesNuevosMes={clientesNuevosMes || 0} />}
 
-      <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} />
+      <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} />
 
       <GestionPortalCliente clientes={clientesActivos || []} />
 
