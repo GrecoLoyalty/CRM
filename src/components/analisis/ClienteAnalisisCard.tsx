@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { guardarBriefing, enviarAProduccion } from "@/app/dashboard/analisis/actions";
 import type { Cliente } from "@/lib/types";
 import clsx from "clsx";
@@ -51,6 +52,9 @@ export default function ClienteAnalisisCard({ cliente }: { cliente: Cliente }) {
 
       {abierto && (
         <div className="border-t border-base-600 p-5 space-y-6">
+          <Link href={`/dashboard/cliente/${cliente.id}`} className="text-xs text-accent-soft underline">
+            Ver ficha completa y bitácora →
+          </Link>
           {/* Interfaz de doble entrada */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-base-900 rounded-lg p-4 border border-base-600">

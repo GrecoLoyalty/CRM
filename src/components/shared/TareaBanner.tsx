@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import { useInactivityPing } from "@/hooks/useInactivityPing";
 
@@ -134,6 +135,11 @@ export default function TareaBanner({
               {cliente?.estado && <p className="text-gray-400">Estado: <span className="text-gray-200">{cliente.estado}</span></p>}
             </div>
             <div className="flex justify-end gap-2 mt-4">
+              {cliente?.id && (
+                <Link href={`/dashboard/cliente/${cliente.id}`} className="btn-secondary text-xs px-3 py-1.5">
+                  Ver ficha completa
+                </Link>
+              )}
               <button type="button" onClick={abrirChat} className="btn-secondary text-xs px-3 py-1.5">
                 Abrir chat
               </button>
