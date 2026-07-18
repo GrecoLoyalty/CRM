@@ -3,9 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { ESTADO_COLOR, type EstadoCliente } from "@/lib/types";
+import { ESTADO_COLOR, DEPTO_LABEL, type EstadoCliente, type Depto } from "@/lib/types";
 import { cambiarEtapaCliente, reasignarResponsables } from "@/app/dashboard/cliente/actions";
+import { definirEquipoDepartamento } from "@/app/dashboard/cliente/equipo-actions";
 import { reasignarTareaEncargado } from "@/app/dashboard/root/clientes/actions";
+
+const DEPTOS: Depto[] = ["ventas", "analisis", "estetica", "desarrollo"];
 
 interface PerfilOpcion {
   id: string;
@@ -28,6 +31,7 @@ interface ClienteResumen {
   ruta_software: boolean;
   vendedor: PerfilOpcion | null;
   analista: PerfilOpcion | null;
+  equipoAsignado: Record<Depto, string[]>;
   tareasEstetica: TareaResumen[];
   tareasDesarrollo: TareaResumen[];
 }
@@ -58,12 +62,14 @@ export default function GestionClientesRoot({
   analistas,
   equipoEstetica,
   equipoDesarrollo,
+  equipoPorDepto,
 }: {
   clientes: ClienteResumen[];
   vendedores: PerfilOpcion[];
   analistas: PerfilOpcion[];
   equipoEstetica: PerfilOpcion[];
   equipoDesarrollo: PerfilOpcion[];
+  equipoPorDepto: Record<Depto, PerfilOpcion[]>;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("TODOS");
@@ -107,6 +113,7 @@ export default function GestionClientesRoot({
             analistas={analistas}
             equipoEstetica={equipoEstetica}
             equipoDesarrollo={equipoDesarrollo}
+            equipoPorDepto={equipoPorDepto}
           />
         ))}
       </div>
@@ -120,16 +127,34 @@ function TarjetaCliente({
   analistas,
   equipoEstetica,
   equipoDesarrollo,
+  equipoPorDepto,
 }: {
   cliente: ClienteResumen;
   vendedores: PerfilOpcion[];
   analistas: PerfilOpcion[];
   equipoEstetica: PerfilOpcion[];
   equipoDesarrollo: PerfilOpcion[];
+  equipoPorDepto: Record<Depto, PerfilOpcion[]>;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [equipoAsignado, setEquipoAsignado] = useState<Record<Depto, string[]>>(cliente.equipoAsignado);
+
+  function onAlternarMiembro(depto: Depto, perfilId: string) {
+    const actuales = equipoAsignado[depto] || [];
+    const nuevos = actuales.includes(perfilId) ? actuales.filter((id) => id !== perfilId) : [...actuales, perfilId];
+    setEquipoAsignado((prev) => ({ ...prev, [depto]: nuevos }));
+    setError(null);
+    startTransition(async () => {
+      try {
+        await definirEquipoDepartamento(cliente.id, depto, nuevos);
+      } catch (e: any) {
+        setError(e.message || "No se pudo actualizar el equipo.");
+        setEquipoAsignado((prev) => ({ ...prev, [depto]: actuales })); // revertir en caso de error
+      }
+    });
+  }
 
   const idx = PIPELINE.indexOf(cliente.estado);
 
@@ -256,6 +281,39 @@ function TarjetaCliente({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Equipo completo: varias personas por departamento para el mismo cliente */}
+          <div>
+            <p className="label-field">Equipo asignado (puede haber varias personas por departamento)</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Marca a todas las personas de cada departamento que van a atender a este cliente. Esto es lo que el
+              cliente ve en su portal.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {DEPTOS.map((depto) => (
+                <div key={depto} className="bg-base-900 border border-base-600 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-300 mb-2">{DEPTO_LABEL[depto]}</p>
+                  {equipoPorDepto[depto].length === 0 ? (
+                    <p className="text-xs text-gray-600">Nadie pertenece aún a este departamento.</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {equipoPorDepto[depto].map((p) => (
+                        <label key={p.id} className="flex items-center gap-2 text-sm text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={(equipoAsignado[depto] || []).includes(p.id)}
+                            disabled={pending}
+                            onChange={() => onAlternarMiembro(depto, p.id)}
+                          />
+                          {p.nombre_completo}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

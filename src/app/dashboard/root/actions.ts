@@ -37,6 +37,45 @@ export async function actualizarRol(perfilId: string, role: string, depto: strin
   revalidatePath("/dashboard/root");
 }
 
+// Reemplaza de una sola vez TODOS los departamentos adicionales de una
+// persona (además de su depto principal en `perfiles.depto`). Con esto
+// una persona puede pertenecer a varios departamentos al mismo tiempo
+// (ej. Análisis + Desarrollo), y aparecerá en las listas de asignación
+// de todos ellos.
+export async function actualizarDepartamentosExtra(perfilId: string, deptos: string[]) {
+  const supabase = createClient();
+
+  const { data: actuales, error: errLectura } = await supabase
+    .from("perfiles_departamentos")
+    .select("depto")
+    .eq("perfil_id", perfilId);
+  if (errLectura) throw new Error(errLectura.message);
+
+  const actualesSet = new Set((actuales || []).map((r) => r.depto));
+  const nuevosSet = new Set(deptos);
+
+  const aAgregar = deptos.filter((d) => !actualesSet.has(d));
+  const aQuitar = [...actualesSet].filter((d) => !nuevosSet.has(d));
+
+  if (aAgregar.length > 0) {
+    const { error } = await supabase
+      .from("perfiles_departamentos")
+      .upsert(aAgregar.map((depto) => ({ perfil_id: perfilId, depto })), { onConflict: "perfil_id,depto" });
+    if (error) throw new Error(error.message);
+  }
+
+  if (aQuitar.length > 0) {
+    const { error } = await supabase
+      .from("perfiles_departamentos")
+      .delete()
+      .eq("perfil_id", perfilId)
+      .in("depto", aQuitar);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/dashboard/root");
+}
+
 export async function alternarActivo(perfilId: string, activo: boolean) {
   const supabase = createClient();
   const { error } = await supabase.from("perfiles").update({ activo }).eq("id", perfilId);

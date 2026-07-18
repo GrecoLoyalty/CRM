@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { ESTADO_COLOR } from "@/lib/types";
+import { ESTADO_COLOR, DEPTO_LABEL, DEPTO_COLOR, type Depto } from "@/lib/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -30,6 +30,24 @@ export default async function PortalClientePage({ params }: { params: { token: s
     .select("*")
     .eq("cliente_id", cliente.id)
     .order("created_at", { ascending: true });
+
+  // Equipo completo que atiende a este cliente (puede haber varias
+  // personas por departamento). El portal solo expone nombre + depto +
+  // avatar, nunca datos internos como email o rol exacto.
+  // Nota: cliente_equipo tiene dos FKs hacia perfiles (perfil_id y
+  // asignado_por), por eso el embed usa "!perfil_id" para desambiguar.
+  const { data: equipoRaw } = await supabase
+    .from("cliente_equipo")
+    .select("depto, perfiles!perfil_id(nombre_completo, avatar_url)")
+    .eq("cliente_id", cliente.id);
+
+  const DEPTOS_ORDEN: Depto[] = ["ventas", "analisis", "estetica", "desarrollo"];
+  const equipoPorDepto = DEPTOS_ORDEN.map((depto) => ({
+    depto,
+    miembros: (equipoRaw || [])
+      .filter((f: any) => f.depto === depto && f.perfiles)
+      .map((f: any) => f.perfiles as { nombre_completo: string; avatar_url: string | null }),
+  })).filter((grupo) => grupo.miembros.length > 0);
 
   const indiceActual = ETAPAS_ORDEN.indexOf(cliente.estado);
   const historialPorEtapa = Object.fromEntries((historial || []).map((h) => [h.estado, h]));
@@ -72,6 +90,36 @@ export default async function PortalClientePage({ params }: { params: { token: s
             );
           })}
         </ol>
+
+        {equipoPorDepto.length > 0 && (
+          <div className="card p-6 mt-8">
+            <p className="text-xs uppercase tracking-wide text-gray-500 mb-4">Tu equipo asignado</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {equipoPorDepto.map((grupo) => (
+                <div key={grupo.depto}>
+                  <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full mb-2 ${DEPTO_COLOR[grupo.depto]}`}>
+                    {DEPTO_LABEL[grupo.depto]}
+                  </span>
+                  <ul className="space-y-1.5">
+                    {grupo.miembros.map((m, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-gray-200">
+                        {m.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.avatar_url} alt={m.nombre_completo} className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                          <span className="w-6 h-6 rounded-full bg-base-700 flex items-center justify-center text-[10px] text-gray-400">
+                            {m.nombre_completo.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        {m.nombre_completo}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <p className="text-center text-xs text-gray-600 mt-12">
           ¿Dudas sobre tu proyecto? Contacta a tu ejecutivo de cuenta en GRESANOVA.

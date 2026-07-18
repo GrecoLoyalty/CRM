@@ -9,11 +9,18 @@ export default async function RootPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: metaActual }, { data: auditoria }, { data: perfiles }] = await Promise.all([
+  const [{ data: metaActual }, { data: auditoria }, { data: perfiles }, { data: deptosExtra }] = await Promise.all([
     supabase.from("metas_mensuales").select("*").order("mes", { ascending: false }).limit(1).single(),
     supabase.from("audit_trail").select("*").order("timestamp", { ascending: false }).limit(50),
     supabase.from("perfiles").select("*").order("nombre_completo"),
+    supabase.from("perfiles_departamentos").select("perfil_id, depto"),
   ]);
+
+  const departamentosExtra: Record<string, string[]> = {};
+  for (const fila of deptosExtra || []) {
+    if (!departamentosExtra[fila.perfil_id]) departamentosExtra[fila.perfil_id] = [];
+    departamentosExtra[fila.perfil_id].push(fila.depto);
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-10">
@@ -23,7 +30,7 @@ export default async function RootPage() {
       </div>
 
       <PanelMetas metaActual={metaActual} />
-      <GestionRoles perfiles={perfiles || []} currentUserId={user!.id} />
+      <GestionRoles perfiles={perfiles || []} currentUserId={user!.id} departamentosExtra={departamentosExtra} />
       <TablaAuditoria registros={auditoria || []} perfiles={perfiles || []} />
     </div>
   );

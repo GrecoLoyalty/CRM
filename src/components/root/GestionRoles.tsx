@@ -1,14 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { actualizarRol, alternarActivo, eliminarUsuario } from "@/app/dashboard/root/actions";
+import { actualizarRol, actualizarDepartamentosExtra, alternarActivo, eliminarUsuario } from "@/app/dashboard/root/actions";
 import type { Perfil } from "@/lib/types";
 
 const ROLES = ["root", "ceo", "analista", "vendedor", "produccion"];
 const DEPTOS = ["ventas", "analisis", "estetica", "desarrollo"];
 const SUBROLES = ["camarografo", "editor", "community_manager", "fullstack", "ia_ml", "qa"];
 
-export default function GestionRoles({ perfiles, currentUserId }: { perfiles: Perfil[]; currentUserId: string }) {
+export default function GestionRoles({
+  perfiles,
+  currentUserId,
+  departamentosExtra,
+}: {
+  perfiles: Perfil[];
+  currentUserId: string;
+  departamentosExtra: Record<string, string[]>;
+}) {
   const pendientes = perfiles.filter((p) => !p.activo);
   const activos = perfiles.filter((p) => p.activo);
 
@@ -28,7 +36,8 @@ export default function GestionRoles({ perfiles, currentUserId }: { perfiles: Pe
                   <th className="py-2 pr-4">Usuario</th>
                   <th className="py-2 pr-4">Nota de solicitud</th>
                   <th className="py-2 pr-4">Rol</th>
-                  <th className="py-2 pr-4">Depto</th>
+                  <th className="py-2 pr-4">Depto principal</th>
+                  <th className="py-2 pr-4">Deptos adicionales</th>
                   <th className="py-2 pr-4">Subrol</th>
                   <th className="py-2 pr-4">Acceso</th>
                   <th className="py-2 pr-4"></th>
@@ -36,7 +45,7 @@ export default function GestionRoles({ perfiles, currentUserId }: { perfiles: Pe
               </thead>
               <tbody>
                 {pendientes.map((p) => (
-                  <FilaPerfil key={p.id} perfil={p} currentUserId={currentUserId} />
+                  <FilaPerfil key={p.id} perfil={p} currentUserId={currentUserId} deptosExtraIniciales={departamentosExtra[p.id] || []} />
                 ))}
               </tbody>
             </table>
@@ -46,14 +55,18 @@ export default function GestionRoles({ perfiles, currentUserId }: { perfiles: Pe
 
       <section className="card p-5">
         <h2 className="font-display font-semibold mb-1">Roles y permisos (RBAC)</h2>
-        <p className="text-sm text-gray-500 mb-4">Los roles viven en la base de datos — cámbialos aquí sin tocar código.</p>
+        <p className="text-sm text-gray-500 mb-4">
+          Los roles viven en la base de datos — cámbialos aquí sin tocar código. Una persona puede tener un depto
+          principal y además pertenecer a otros deptos (columna &quot;Deptos adicionales&quot;) si atiende a más de uno.
+        </p>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="text-left text-gray-500 border-b border-base-600">
                 <th className="py-2 pr-4">Usuario</th>
                 <th className="py-2 pr-4">Rol</th>
-                <th className="py-2 pr-4">Depto</th>
+                <th className="py-2 pr-4">Depto principal</th>
+                <th className="py-2 pr-4">Deptos adicionales</th>
                 <th className="py-2 pr-4">Subrol</th>
                 <th className="py-2 pr-4">Activo</th>
                 <th className="py-2 pr-4"></th>
@@ -61,7 +74,7 @@ export default function GestionRoles({ perfiles, currentUserId }: { perfiles: Pe
             </thead>
             <tbody>
               {activos.map((p) => (
-                <FilaPerfil key={p.id} perfil={p} currentUserId={currentUserId} />
+                <FilaPerfil key={p.id} perfil={p} currentUserId={currentUserId} deptosExtraIniciales={departamentosExtra[p.id] || []} />
               ))}
             </tbody>
           </table>
@@ -71,7 +84,15 @@ export default function GestionRoles({ perfiles, currentUserId }: { perfiles: Pe
   );
 }
 
-function FilaPerfil({ perfil, currentUserId }: { perfil: Perfil; currentUserId: string }) {
+function FilaPerfil({
+  perfil,
+  currentUserId,
+  deptosExtraIniciales,
+}: {
+  perfil: Perfil;
+  currentUserId: string;
+  deptosExtraIniciales: string[];
+}) {
   const [role, setRole] = useState(perfil.role);
   const [depto, setDepto] = useState(perfil.depto || "");
   const [subrol, setSubrol] = useState(perfil.subrol || "");
@@ -79,6 +100,8 @@ function FilaPerfil({ perfil, currentUserId }: { perfil: Perfil; currentUserId: 
   const [aprobando, setAprobando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [eliminado, setEliminado] = useState(false);
+  const [deptosExtra, setDeptosExtra] = useState<string[]>(deptosExtraIniciales);
+  const [guardandoDeptos, setGuardandoDeptos] = useState(false);
   const esUnoMismo = perfil.id === currentUserId;
 
   async function guardar(nuevoRole: string, nuevoDepto: string, nuevoSubrol: string) {
@@ -86,6 +109,17 @@ function FilaPerfil({ perfil, currentUserId }: { perfil: Perfil; currentUserId: 
     setDepto(nuevoDepto);
     setSubrol(nuevoSubrol);
     await actualizarRol(perfil.id, nuevoRole, nuevoDepto || null, nuevoSubrol || null);
+  }
+
+  async function alternarDeptoExtra(d: string) {
+    const nuevos = deptosExtra.includes(d) ? deptosExtra.filter((x) => x !== d) : [...deptosExtra, d];
+    setDeptosExtra(nuevos);
+    setGuardandoDeptos(true);
+    try {
+      await actualizarDepartamentosExtra(perfil.id, nuevos);
+    } finally {
+      setGuardandoDeptos(false);
+    }
   }
 
   async function aprobar() {
@@ -134,6 +168,21 @@ function FilaPerfil({ perfil, currentUserId }: { perfil: Perfil; currentUserId: 
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
+      </td>
+      <td className="py-2 pr-4">
+        <div className="flex flex-wrap gap-2 max-w-[220px]">
+          {DEPTOS.filter((d) => d !== depto).map((d) => (
+            <label key={d} className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={deptosExtra.includes(d)}
+                disabled={guardandoDeptos}
+                onChange={() => alternarDeptoExtra(d)}
+              />
+              {d}
+            </label>
+          ))}
+        </div>
       </td>
       <td className="py-2 pr-4">
         <select value={subrol} onChange={(e) => guardar(role, depto, e.target.value)} className="input-field py-1">

@@ -27,11 +27,42 @@ export interface Perfil {
   nombre_completo: string;
   role: UserRole;
   subrol: ProduccionSubrol | null;
-  depto: Depto | null;
+  depto: Depto | null; // departamento principal (compatibilidad)
   activo: boolean;
   nota_solicitud?: string | null;
   avatar_url: string | null;
 }
+
+// Fila de perfiles_departamentos: un departamento adicional de una persona.
+export interface PerfilDepartamento {
+  perfil_id: string;
+  depto: Depto;
+}
+
+// Fila de cliente_equipo: una persona asignada a un cliente dentro de un departamento.
+// Un mismo cliente puede tener varias filas por el mismo depto (varias personas)
+// y varias filas de distintos deptos (varios departamentos atendiendo al mismo cliente).
+export interface MiembroEquipoCliente {
+  id: string;
+  cliente_id: string;
+  depto: Depto;
+  perfil_id: string;
+  perfil?: { nombre_completo: string; avatar_url: string | null } | null;
+}
+
+export const DEPTO_LABEL: Record<Depto, string> = {
+  ventas: "Ventas",
+  analisis: "Análisis",
+  estetica: "Estética",
+  desarrollo: "Desarrollo",
+};
+
+export const DEPTO_COLOR: Record<Depto, string> = {
+  ventas: "bg-signal-info/15 text-signal-info",
+  analisis: "bg-accent/15 text-accent-soft",
+  estetica: "bg-signal-warn/15 text-signal-warn",
+  desarrollo: "bg-purple-500/15 text-purple-300",
+};
 
 export interface Cliente {
   id: string;
