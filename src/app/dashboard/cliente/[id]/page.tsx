@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import BitacoraCliente from "@/components/cliente/BitacoraCliente";
 import BotonVolver from "@/components/cliente/BotonVolver";
+import EliminarClienteBoton from "@/components/cliente/EliminarClienteBoton";
 import Link from "next/link";
 import { ESTADO_COLOR } from "@/lib/types";
 
@@ -10,6 +11,8 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user!.id).single();
 
   const { data: cliente } = await supabase.from("clientes").select("*").eq("id", params.id).single();
   if (!cliente) notFound(); // RLS ya filtra si no tiene acceso; aquí solo confirmamos que existe para él
@@ -33,7 +36,10 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <BotonVolver />
+        <div className="flex items-center justify-between">
+          <BotonVolver />
+          {miPerfil?.role === "root" && <EliminarClienteBoton clienteId={cliente.id} nombreEmpresa={cliente.nombre_empresa} />}
+        </div>
         <div className="flex items-center gap-3 mt-2">
           <h1 className="text-2xl font-display font-semibold">{cliente.nombre_empresa}</h1>
           <span className={`text-xs px-2 py-0.5 rounded-full ${ESTADO_COLOR[cliente.estado as keyof typeof ESTADO_COLOR]}`}>

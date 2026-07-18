@@ -28,6 +28,8 @@ Sistema de Gestión de Relaciones y Flujo Operativo, construido según `GRESANOV
 | Rechazar solicitudes / eliminar usuarios desde Panel Root | ✅ Completo — borra la cuenta de Auth y su perfil en cascada |
 | Diseño responsive (móvil, tablet, escritorio) | ✅ Sidebar se vuelve un menú deslizable en pantallas chicas; tablas con scroll horizontal; formularios y tarjetas se acomodan en una sola columna |
 | Ficha de cliente compartida + Bitácora entre departamentos | ✅ `/dashboard/cliente/[id]` — cualquier depto con acceso al cliente ve la necesidad detectada (Ventas), el Briefing (Análisis), los entregables de cada tarea, y puede agregar notas/links visibles para todos en tiempo real |
+| Eliminar cliente (con doble confirmación) | ✅ Solo Root — botón en la ficha del cliente. Borra en cascada tareas, chat, bóveda, bitácora e historial. RLS a nivel de base de datos también lo restringe, no solo el botón |
+| Vista de Águila interactiva | ✅ Click en un nodo de departamento → lista de clientes activos ahí con lo que se está trabajando → click en un cliente → va directo a su ficha |
 | Notificaciones in-app con campana y tiempo real | ✅ Completo |
 | Detección de inactividad (Tiempo Total Abierta vs Tiempo Activo Real) | ✅ Completo, cálculo verificado en backend, no solo en el navegador |
 | Formulario de Profundidad (externo, sin login) | ⚠️ Simplificado — el token y la expiración de 72h ya existen en la base de datos; falta construir el formulario público en sí porque **el cuestionario todavía no está definido** (blueprint, decisión pendiente #02). Página siguiente natural: `/formulario/[token]`. |
@@ -81,7 +83,7 @@ gresanova-crm/
 
 ### 4.1 Supabase
 1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. Ve a **SQL Editor** → pega el contenido completo de `supabase/migrations/0001_init.sql` → **Run**. Repite lo mismo con `0002_solicitud_acceso.sql`, `0003_chat_interno.sql`, `0004_fix_rls_conversaciones.sql` y `0005_bitacora_cliente.sql`, en ese orden.
+2. Ve a **SQL Editor** → pega el contenido completo de `supabase/migrations/0001_init.sql` → **Run**. Repite lo mismo con `0002_solicitud_acceso.sql`, `0003_chat_interno.sql`, `0004_fix_rls_conversaciones.sql`, `0005_bitacora_cliente.sql` y `0006_restringir_eliminacion.sql`, en ese orden.
 3. Ve a **Authentication → Providers** y confirma que Email esté habilitado.
 4. Crea a tus primeros usuarios en **Authentication → Users → Add user** (email + password). Anota su `UUID`.
 5. Para cada usuario, ve a **Table Editor → perfiles** y agrega una fila con ese `UUID` como `id`, su `nombre_completo` y su `role` (`root`, `ceo`, `analista`, `vendedor` o `produccion`). El primer usuario que crees debería ser `root` (Oscar).
