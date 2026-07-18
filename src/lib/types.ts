@@ -92,7 +92,7 @@ export interface Cliente {
 
 export interface Tarea {
   id: string;
-  cliente_id: string;
+  cliente_id: string | null; // null = tarea interna/secundaria, no ligada a ningún cliente
   depto: Depto;
   subrol_requerido: ProduccionSubrol | null;
   titulo: string;
@@ -103,6 +103,7 @@ export interface Tarea {
   link_entregable: string | null;
   progreso_pct: number;
   tiempo_activo_real_seg: number;
+  origen: "automatico" | "manual";
   created_at: string;
 }
 
@@ -115,3 +116,32 @@ export const ESTADO_COLOR: Record<EstadoCliente, string> = {
   ENTREGADO: "bg-green-500/20 text-green-400",
   HISTORICO: "bg-base-600 text-gray-400",
 };
+
+// ---------------------------------------------------------------------
+// Finanzas: banner de ingresos/egresos y flujo de caja
+// ---------------------------------------------------------------------
+export type TipoMovimientoCaja = "ingreso" | "egreso";
+
+export interface MovimientoCaja {
+  id: string;
+  tipo: TipoMovimientoCaja;
+  categoria: string;
+  concepto: string;
+  monto: number;
+  cliente_id: string | null;
+  fecha: string; // YYYY-MM-DD
+  registrado_por: string | null;
+  created_at: string;
+}
+
+export const CATEGORIAS_INGRESO = ["venta", "otro"] as const;
+export const CATEGORIAS_EGRESO = ["nomina", "proveedor", "gasto_operativo", "impuestos", "otro"] as const;
+
+// ---------------------------------------------------------------------
+// Tiempo de uso diario por persona (gráfica de barras del equipo)
+// ---------------------------------------------------------------------
+export interface TiempoUsoDiario {
+  perfil_id: string;
+  fecha: string;
+  segundos_activos: number;
+}

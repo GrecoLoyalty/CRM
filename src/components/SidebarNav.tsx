@@ -11,6 +11,7 @@ const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[
     { href: "/dashboard/root", label: "Panel Root", icon: "◆" },
     { href: "/dashboard/root/clientes", label: "Clientes", icon: "☰" },
     { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
+    { href: "/dashboard/ceo/tareas", label: "Asignar tarea", icon: "✎" },
     { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
     { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
     { href: "/dashboard/analisis", label: "Análisis", icon: "②" },
@@ -19,6 +20,7 @@ const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[
   ],
   ceo: [
     { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
+    { href: "/dashboard/ceo/tareas", label: "Asignar tarea", icon: "✎" },
     { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
     { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
     { href: "/dashboard/analisis", label: "Análisis", icon: "②" },

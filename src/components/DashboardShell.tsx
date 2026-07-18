@@ -6,6 +6,7 @@ import BannerUrgencia from "@/components/BannerUrgencia";
 import NotificacionesBell from "@/components/shared/NotificacionesBell";
 import ChatWidget from "@/components/shared/ChatWidget";
 import ChatEquipoWidget from "@/components/shared/ChatEquipoWidget";
+import { useSesionPing } from "@/hooks/useSesionPing";
 import type { Perfil } from "@/lib/types";
 import clsx from "clsx";
 
@@ -22,6 +23,7 @@ export default function DashboardShell({
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const esCeo = perfil.role === "root" || perfil.role === "ceo";
+  useSesionPing();
 
   return (
     <div className="min-h-screen bg-base-900 flex">

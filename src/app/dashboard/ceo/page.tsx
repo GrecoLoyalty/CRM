@@ -3,6 +3,9 @@ import VistaAguila from "@/components/ceo/VistaAguila";
 import PublicarBanner from "@/components/ceo/PublicarBanner";
 import BarraMetaGlobal from "@/components/shared/BarraMetaGlobal";
 import GestionPortalCliente from "@/components/ceo/GestionPortalCliente";
+import EstadisticasEquipo from "@/components/shared/EstadisticasEquipo";
+import BannerCaja from "@/components/ceo/BannerCaja";
+import { obtenerEstadisticasEquipo } from "@/lib/estadisticas";
 
 export default async function CeoPage() {
   const supabase = createClient();
@@ -39,6 +42,14 @@ export default async function CeoPage() {
     .select("id, nombre_empresa, estado, portal_token")
     .neq("estado", "HISTORICO")
     .order("updated_at", { ascending: false });
+
+  const estadisticas = await obtenerEstadisticasEquipo(supabase);
+  const { data: movimientosRecientes } = await supabase
+    .from("movimientos_caja")
+    .select("*")
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(15);
 
   // --- Detalle por departamento para la Vista de Águila interactiva ---
   const [
@@ -81,7 +92,11 @@ export default async function CeoPage() {
 
       {meta && <BarraMetaGlobal meta={meta} clientesNuevosMes={clientesNuevosMes || 0} />}
 
+      <EstadisticasEquipo datos={estadisticas} />
+
       <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} />
+
+      <BannerCaja movimientosRecientes={movimientosRecientes || []} />
 
       <GestionPortalCliente clientes={clientesActivos || []} />
 

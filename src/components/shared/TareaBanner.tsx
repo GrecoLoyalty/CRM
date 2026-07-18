@@ -83,7 +83,9 @@ export default function TareaBanner({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-medium truncate">{tarea.titulo}</p>
-            <p className="text-sm text-gray-500 truncate">{cliente?.nombre_empresa} · {cliente?.nombre_contacto}</p>
+            <p className="text-sm text-gray-500 truncate">
+              {cliente?.nombre_empresa ? `${cliente.nombre_empresa} · ${cliente.nombre_contacto || ""}` : "Tarea interna (sin cliente)"}
+            </p>
           </div>
           <span className={clsx("text-xs font-mono whitespace-nowrap", colorReloj)}>{etiquetaReloj}</span>
         </div>

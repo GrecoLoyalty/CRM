@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import VistaAguila from "@/components/ceo/VistaAguila";
+import EstadisticasEquipo from "@/components/shared/EstadisticasEquipo";
+import { obtenerEstadisticasEquipo } from "@/lib/estadisticas";
 
 export default async function VistaAguilaPage() {
   const supabase = createClient();
@@ -10,6 +12,7 @@ export default async function VistaAguilaPage() {
 
   const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user!.id).single();
   const esCeoORoot = miPerfil?.role === "root" || miPerfil?.role === "ceo";
+  const estadisticas = await obtenerEstadisticasEquipo(supabase);
 
   // Una sola consulta contra `clientes` — la RLS ya se encarga de que cada
   // rol solo reciba las filas a las que tiene acceso (root/ceo: todas;
@@ -69,6 +72,8 @@ export default async function VistaAguilaPage() {
             : "En qué proceso van tus clientes ahora mismo. Click en un departamento para ver el detalle."}
         </p>
       </div>
+
+      <EstadisticasEquipo datos={estadisticas} />
 
       <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} />
     </div>
