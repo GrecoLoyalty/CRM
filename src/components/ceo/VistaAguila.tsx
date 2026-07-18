@@ -138,8 +138,8 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPo
   const listaActiva = deptoSeleccionado ? clientesPorDepto[deptoSeleccionado] || [] : [];
 
   return (
-    <div className="card p-6 overflow-x-auto">
-      <svg ref={svgRef} viewBox="0 0 680 400" className="w-full min-w-[600px] h-[380px]" />
+    <div className="card p-4 sm:p-6">
+      <svg ref={svgRef} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid meet" className="w-full h-[260px] sm:h-[380px]" />
 
       {deptoSeleccionado && (
         <div className="mt-4 border-t border-base-600 pt-4">

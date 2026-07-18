@@ -3,12 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Mapa de qué rol puede entrar a qué sección del dashboard.
 // root y ceo tienen acceso total; los demás solo a su propia área.
+// "cliente" (la ficha /dashboard/cliente/[id]) y "vista-aguila" están
+// disponibles para TODOS los roles: cualquier usuario debe poder abrir
+// la ficha de un cliente al que tiene acceso (RLS ya filtra los datos)
+// y ver su propia Vista de Águila.
 const RUTA_POR_ROL: Record<string, string[]> = {
-  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo"],
-  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo"],
-  analista: ["analisis"],
-  vendedor: ["ventas"],
-  produccion: ["estetica", "desarrollo"],
+  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila"],
+  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila"],
+  analista: ["analisis", "cliente", "vista-aguila"],
+  vendedor: ["ventas", "cliente", "vista-aguila"],
+  produccion: ["estetica", "desarrollo", "cliente", "vista-aguila"],
 };
 
 export async function middleware(request: NextRequest) {

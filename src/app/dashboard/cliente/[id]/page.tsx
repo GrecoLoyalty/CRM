@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import BitacoraCliente from "@/components/cliente/BitacoraCliente";
 import BotonVolver from "@/components/cliente/BotonVolver";
 import EliminarClienteBoton from "@/components/cliente/EliminarClienteBoton";
+import ControlEtapaCliente from "@/components/cliente/ControlEtapaCliente";
+import ResponsablesCliente from "@/components/cliente/ResponsablesCliente";
 import Link from "next/link";
-import { ESTADO_COLOR } from "@/lib/types";
+import { ESTADO_COLOR, type EstadoCliente } from "@/lib/types";
 
 export default async function PerfilClientePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -13,6 +15,7 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
   } = await supabase.auth.getUser();
 
   const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user!.id).single();
+  const esRootOCeo = miPerfil?.role === "root" || miPerfil?.role === "ceo";
 
   const { data: cliente } = await supabase.from("clientes").select("*").eq("id", params.id).single();
   if (!cliente) notFound(); // RLS ya filtra si no tiene acceso; aquí solo confirmamos que existe para él
@@ -29,9 +32,51 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
 
   const { data: tareas } = await supabase
     .from("tareas")
-    .select("id, depto, titulo, estado, link_entregable, updated_at")
+    .select("id, depto, titulo, estado, link_entregable, updated_at, asignado_a, perfiles(nombre_completo)")
     .eq("cliente_id", cliente.id)
     .order("created_at", { ascending: true });
+
+  // --- Encargados: para que quede claro quién es responsable de qué ---
+  const [{ data: vendedor }, { data: analista }] = await Promise.all([
+    cliente.vendedor_id
+      ? supabase.from("perfiles").select("id, nombre_completo").eq("id", cliente.vendedor_id).single()
+      : Promise.resolve({ data: null }),
+    cliente.analista_id
+      ? supabase.from("perfiles").select("id, nombre_completo").eq("id", cliente.analista_id).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const nombresPorDepto = (depto: string) =>
+    Array.from(
+      new Set(
+        (tareas || [])
+          .filter((t: any) => t.depto === depto && t.perfiles?.nombre_completo)
+          .map((t: any) => t.perfiles.nombre_completo as string)
+      )
+    );
+  const encargadosEstetica = nombresPorDepto("estetica");
+  const encargadosDesarrollo = nombresPorDepto("desarrollo");
+
+  // Solo Root/CEO reasignan Ventas/Análisis; para las listas de opciones
+  // necesitamos los vendedores y analistas activos.
+  let vendedores: { id: string; nombre_completo: string }[] = [];
+  let analistas: { id: string; nombre_completo: string }[] = [];
+  if (esRootOCeo) {
+    const [{ data: vendedoresData }, { data: analistasData }] = await Promise.all([
+      supabase.from("perfiles").select("id, nombre_completo").eq("role", "vendedor").eq("activo", true).order("nombre_completo"),
+      supabase.from("perfiles").select("id, nombre_completo").eq("role", "analista").eq("activo", true).order("nombre_completo"),
+    ]);
+    vendedores = vendedoresData || [];
+    analistas = analistasData || [];
+  }
+
+  // ¿Puede este usuario mover la etapa del cliente? Root/CEO siempre;
+  // el resto solo si es vendedor/analista asignado o tiene una tarea aquí.
+  const esEncargado =
+    esRootOCeo ||
+    cliente.vendedor_id === user!.id ||
+    cliente.analista_id === user!.id ||
+    (tareas || []).some((t) => t.asignado_a === user!.id);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -51,6 +96,19 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
         </p>
         <p className="text-xs text-gray-600 mt-1 font-mono">{cliente.cliente_codigo}</p>
       </div>
+
+      <ResponsablesCliente
+        clienteId={cliente.id}
+        vendedor={vendedor}
+        analista={analista}
+        encargadosEstetica={encargadosEstetica}
+        encargadosDesarrollo={encargadosDesarrollo}
+        puedeEditar={esRootOCeo}
+        vendedores={vendedores}
+        analistas={analistas}
+      />
+
+      <ControlEtapaCliente clienteId={cliente.id} estadoActual={cliente.estado as EstadoCliente} puedeGestionar={esEncargado} />
 
       {/* Lo que dijo Ventas */}
       <section className="card p-5">

@@ -9,6 +9,7 @@ import clsx from "clsx";
 const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[]> = {
   root: [
     { href: "/dashboard/root", label: "Panel Root", icon: "◆" },
+    { href: "/dashboard/root/clientes", label: "Clientes", icon: "☰" },
     { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
     { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
     { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
@@ -24,11 +25,18 @@ const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[
     { href: "/dashboard/estetica", label: "Estética Visual", icon: "③" },
     { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "④" },
   ],
-  analista: [{ href: "/dashboard/analisis", label: "Análisis", icon: "②" }],
-  vendedor: [{ href: "/dashboard/ventas", label: "Ventas", icon: "①" }],
+  analista: [
+    { href: "/dashboard/analisis", label: "Análisis", icon: "②" },
+    { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
+  ],
+  vendedor: [
+    { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
+    { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
+  ],
   produccion: [
     { href: "/dashboard/estetica", label: "Estética Visual", icon: "③" },
     { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "④" },
+    { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
   ],
 };
 
