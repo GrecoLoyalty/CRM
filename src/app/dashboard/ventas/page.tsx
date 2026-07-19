@@ -11,26 +11,50 @@ export default async function VentasPage() {
   const { data: perfil } = await supabase.from("perfiles").select("role").eq("id", user!.id).single();
   const esLiderOVendedor = perfil?.role === "vendedor";
 
+  // Un vendedor debe ver tanto los clientes donde es el vendedor principal
+  // (vendedor_id) como aquellos donde Root/CEO lo agregó como parte del
+  // equipo de Ventas de ese cliente (cliente_equipo), aunque no sea el
+  // principal. Antes solo se filtraba por vendedor_id y esos clientes
+  // "desaparecían" para el resto del equipo asignado.
+  let idsPorEquipo: string[] = [];
+  if (esLiderOVendedor) {
+    const { data: equipo } = await supabase
+      .from("cliente_equipo")
+      .select("cliente_id")
+      .eq("perfil_id", user!.id)
+      .eq("depto", "ventas");
+    idsPorEquipo = (equipo || []).map((e) => e.cliente_id);
+  }
+
   let query = supabase
     .from("clientes")
     .select("*")
     .in("estado", ["PROSPECTO"])
     .order("created_at", { ascending: true });
 
-  if (esLiderOVendedor) query = query.eq("vendedor_id", user!.id);
+  if (esLiderOVendedor) {
+    query = idsPorEquipo.length > 0
+      ? query.or(`vendedor_id.eq.${user!.id},id.in.(${idsPorEquipo.join(",")})`)
+      : query.eq("vendedor_id", user!.id);
+  }
 
   const { data: prospectos } = await query;
   const { data: giros } = await supabase.from("giros_industria").select("*").eq("activo", true);
 
-  // KPIs simples
+  // KPIs simples — igual que arriba, cuentan tanto lo propio como lo que
+  // le tocó por ser parte del equipo de un cliente.
+  const filtroPropio = idsPorEquipo.length > 0
+    ? `vendedor_id.eq.${user!.id},id.in.(${idsPorEquipo.join(",")})`
+    : `vendedor_id.eq.${user!.id}`;
+
   const { count: totalHistorico } = await supabase
     .from("clientes")
     .select("*", { count: "exact", head: true })
-    .eq("vendedor_id", user!.id);
+    .or(filtroPropio);
   const { count: cerrados } = await supabase
     .from("clientes")
     .select("*", { count: "exact", head: true })
-    .eq("vendedor_id", user!.id)
+    .or(filtroPropio)
     .neq("estado", "PROSPECTO");
 
   const tasaCierre = totalHistorico ? Math.round(((cerrados || 0) / totalHistorico) * 100) : 0;
