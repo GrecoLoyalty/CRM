@@ -49,6 +49,7 @@ export interface EventoCalendario {
   ubicacion: string | null;
   cliente_id: string | null;
   creado_por: string;
+  link_publico_token: string;
   created_at: string;
   updated_at: string;
 }

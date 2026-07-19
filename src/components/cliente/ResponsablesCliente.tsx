@@ -14,6 +14,7 @@ export default function ResponsablesCliente({
   analista,
   encargadosEstetica,
   encargadosDesarrollo,
+  equipoPorDepto,
   puedeEditar,
   vendedores,
   analistas,
@@ -23,6 +24,7 @@ export default function ResponsablesCliente({
   analista: PerfilOpcion | null;
   encargadosEstetica: string[];
   encargadosDesarrollo: string[];
+  equipoPorDepto: Record<string, string[]>;
   puedeEditar: boolean;
   vendedores: PerfilOpcion[];
   analistas: PerfilOpcion[];
@@ -45,6 +47,10 @@ export default function ResponsablesCliente({
     });
   }
 
+  // El resto del equipo, sin contar al principal (para no repetir el nombre).
+  const equipoExtra = (depto: string, principal?: string | null) =>
+    (equipoPorDepto[depto] || []).filter((nombre) => nombre !== principal);
+
   return (
     <section className="card p-5">
       <div className="flex items-center justify-between mb-3">
@@ -60,19 +66,29 @@ export default function ResponsablesCliente({
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-xs text-gray-500 uppercase tracking-wide">Ventas</dt>
-            <dd className="mt-0.5">{vendedor?.nombre_completo || "— sin asignar —"}</dd>
+            <dd className="mt-0.5">
+              {vendedor?.nombre_completo || "— sin asignar —"}
+              {equipoExtra("ventas", vendedor?.nombre_completo).length > 0 && (
+                <span className="text-gray-500"> + {equipoExtra("ventas", vendedor?.nombre_completo).join(", ")}</span>
+              )}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-gray-500 uppercase tracking-wide">Análisis</dt>
-            <dd className="mt-0.5">{analista?.nombre_completo || "— sin asignar —"}</dd>
+            <dd className="mt-0.5">
+              {analista?.nombre_completo || "— sin asignar —"}
+              {equipoExtra("analisis", analista?.nombre_completo).length > 0 && (
+                <span className="text-gray-500"> + {equipoExtra("analisis", analista?.nombre_completo).join(", ")}</span>
+              )}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-gray-500 uppercase tracking-wide">Estética Visual</dt>
-            <dd className="mt-0.5">{encargadosEstetica.length ? encargadosEstetica.join(", ") : "— sin tareas activas —"}</dd>
+            <dd className="mt-0.5">{encargadosEstetica.length ? encargadosEstetica.join(", ") : equipoPorDepto.estetica?.join(", ") || "— sin tareas activas —"}</dd>
           </div>
           <div>
             <dt className="text-xs text-gray-500 uppercase tracking-wide">Desarrollo</dt>
-            <dd className="mt-0.5">{encargadosDesarrollo.length ? encargadosDesarrollo.join(", ") : "— sin tareas activas —"}</dd>
+            <dd className="mt-0.5">{encargadosDesarrollo.length ? encargadosDesarrollo.join(", ") : equipoPorDepto.desarrollo?.join(", ") || "— sin tareas activas —"}</dd>
           </div>
         </dl>
       ) : (
@@ -100,7 +116,8 @@ export default function ResponsablesCliente({
             </select>
           </div>
           <p className="text-xs text-gray-500">
-            Los encargados de Estética y Desarrollo se asignan por tarea desde Panel Root → Clientes.
+            Aquí solo cambias al principal de Ventas/Análisis. Para agregar más personas al equipo (o los
+            encargados de Estética/Desarrollo), ve a Panel Root → Clientes → &quot;Equipo asignado&quot;.
           </p>
           <div className="flex gap-2">
             <button onClick={guardar} disabled={pending} className="btn-primary text-xs px-3 py-1.5">

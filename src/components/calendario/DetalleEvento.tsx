@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { eliminarEvento, responderInvitacion } from "@/app/dashboard/calendario/actions";
@@ -50,11 +50,19 @@ export default function DetalleEvento({
   onEliminado: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  const [copiado, setCopiado] = useState(false);
   const creador = perfilesPorId.get(evento.creado_por);
   const miPerfil = perfilesPorId.get(userId);
   const puedeEditar = evento.creado_por === userId || miPerfil?.role === "root" || miPerfil?.role === "ceo";
   const miInvitacion = invitados.find((i) => i.perfil_id === userId);
   const cliente = clientes.find((c) => c.id === evento.cliente_id);
+
+  function copiarLinkInvitacion() {
+    const url = `${window.location.origin}/evento/${evento.link_publico_token}`;
+    navigator.clipboard.writeText(url);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
 
   function eliminar() {
     if (!confirm("¿Eliminar este evento para todos los invitados?")) return;
@@ -127,6 +135,16 @@ export default function DetalleEvento({
             </button>
           </div>
         )}
+
+        <div className="mb-4">
+          <button onClick={copiarLinkInvitacion} className="w-full text-sm btn-secondary">
+            {copiado ? "Link copiado ✓" : "🔗 Copiar link de invitación"}
+          </button>
+          <p className="text-xs text-gray-600 mt-1.5">
+            Cualquiera con este link ve el detalle del evento (aunque no tenga cuenta), y le aparece un botón para
+            entrar al sistema y confirmar su asistencia.
+          </p>
+        </div>
 
         {puedeEditar && (
           <div className="flex gap-2 border-t border-base-600 pt-4">

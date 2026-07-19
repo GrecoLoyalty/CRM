@@ -37,14 +37,24 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
     .order("created_at", { ascending: true });
 
   // --- Encargados: para que quede claro quién es responsable de qué ---
-  const [{ data: vendedor }, { data: analista }] = await Promise.all([
+  // OJO: vendedor_id/analista_id son solo el "principal"; cliente_equipo
+  // (sincronizada automáticamente por triggers en la base de datos) es la
+  // fuente real de quién más está en el equipo de este cliente.
+  const [{ data: vendedor }, { data: analista }, { data: equipoRaw }] = await Promise.all([
     cliente.vendedor_id
       ? supabase.from("perfiles").select("id, nombre_completo").eq("id", cliente.vendedor_id).single()
       : Promise.resolve({ data: null }),
     cliente.analista_id
       ? supabase.from("perfiles").select("id, nombre_completo").eq("id", cliente.analista_id).single()
       : Promise.resolve({ data: null }),
+    supabase.from("cliente_equipo").select("perfil_id, depto, perfiles!perfil_id(nombre_completo)").eq("cliente_id", cliente.id),
   ]);
+
+  const equipoPorDepto: Record<string, string[]> = { ventas: [], analisis: [], estetica: [], desarrollo: [] };
+  for (const fila of (equipoRaw || []) as any[]) {
+    const nombre = fila.perfiles?.nombre_completo;
+    if (nombre && !equipoPorDepto[fila.depto].includes(nombre)) equipoPorDepto[fila.depto].push(nombre);
+  }
 
   const nombresPorDepto = (depto: string) =>
     Array.from(
@@ -71,12 +81,16 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
   }
 
   // ¿Puede este usuario mover la etapa del cliente? Root/CEO siempre;
-  // el resto solo si es vendedor/analista asignado o tiene una tarea aquí.
+  // el resto solo si es vendedor/analista asignado, tiene una tarea aquí,
+  // o forma parte del equipo del cliente (cliente_equipo) — exactamente
+  // el mismo criterio que usa fn_es_encargado_cliente en la base de datos,
+  // para que este botón nunca se oculte a alguien que la RLS sí deja pasar.
   const esEncargado =
     esRootOCeo ||
     cliente.vendedor_id === user!.id ||
     cliente.analista_id === user!.id ||
-    (tareas || []).some((t) => t.asignado_a === user!.id);
+    (tareas || []).some((t) => t.asignado_a === user!.id) ||
+    (equipoRaw || []).some((e: any) => e.perfil_id === user!.id);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -103,6 +117,7 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
         analista={analista}
         encargadosEstetica={encargadosEstetica}
         encargadosDesarrollo={encargadosDesarrollo}
+        equipoPorDepto={equipoPorDepto}
         puedeEditar={esRootOCeo}
         vendedores={vendedores}
         analistas={analistas}
