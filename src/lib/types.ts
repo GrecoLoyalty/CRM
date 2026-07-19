@@ -31,6 +31,32 @@ export interface Perfil {
   activo: boolean;
   nota_solicitud?: string | null;
   avatar_url: string | null;
+  color_calendario?: string | null;
+}
+
+// ---------------------------------------------------------------------
+// Calendario compartido
+// ---------------------------------------------------------------------
+export type RespuestaInvitacion = "pendiente" | "acepta" | "rechaza";
+
+export interface EventoCalendario {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  fecha_inicio: string;
+  fecha_fin: string;
+  todo_el_dia: boolean;
+  ubicacion: string | null;
+  cliente_id: string | null;
+  creado_por: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventoInvitado {
+  evento_id: string;
+  perfil_id: string;
+  respuesta: RespuestaInvitacion;
 }
 
 // Fila de perfiles_departamentos: un departamento adicional de una persona.

@@ -10,6 +10,7 @@ const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[
   root: [
     { href: "/dashboard/root", label: "Panel Root", icon: "◆" },
     { href: "/dashboard/root/clientes", label: "Clientes", icon: "☰" },
+    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
     { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
     { href: "/dashboard/ceo/tareas", label: "Asignar tarea", icon: "✎" },
     { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
@@ -20,6 +21,7 @@ const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[
   ],
   ceo: [
     { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
+    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
     { href: "/dashboard/ceo/tareas", label: "Asignar tarea", icon: "✎" },
     { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
     { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
@@ -29,15 +31,18 @@ const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[
   ],
   analista: [
     { href: "/dashboard/analisis", label: "Análisis", icon: "②" },
+    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
     { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
   ],
   vendedor: [
     { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
+    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
     { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
   ],
   produccion: [
     { href: "/dashboard/estetica", label: "Estética Visual", icon: "③" },
     { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "④" },
+    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
     { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
   ],
 };
