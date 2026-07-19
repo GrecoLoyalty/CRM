@@ -4,6 +4,16 @@ import { ESTADO_COLOR, DEPTO_LABEL, DEPTO_COLOR, type Depto } from "@/lib/types"
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+// IMPORTANTE: esta página usa createServiceClient(), que es un cliente
+// "plano" de supabase-js (no usa cookies() ni ninguna API dinámica de
+// Next.js). Sin esto, Next.js la trata como una página ESTÁTICA y la
+// cachea la primera vez que alguien abre el link — así que cualquier
+// comentario, fecha o cambio de equipo que agregues DESPUÉS de esa
+// primera visita nunca se reflejaba para el cliente. Forzamos
+// renderizado dinámico para que siempre traiga los datos más recientes.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const ETAPAS_ORDEN = ["PROSPECTO", "TRANSFERIDO", "EN_ANALISIS", "EN_PRODUCCION", "EN_SUPERVISION", "ENTREGADO"];
 const ETAPA_LABEL: Record<string, string> = {
   PROSPECTO: "Contacto inicial",
