@@ -5,6 +5,7 @@ import BotonVolver from "@/components/cliente/BotonVolver";
 import EliminarClienteBoton from "@/components/cliente/EliminarClienteBoton";
 import ControlEtapaCliente from "@/components/cliente/ControlEtapaCliente";
 import ResponsablesCliente from "@/components/cliente/ResponsablesCliente";
+import MaterialesCliente from "@/components/cliente/MaterialesCliente";
 import Link from "next/link";
 import { ESTADO_COLOR, type EstadoCliente } from "@/lib/types";
 
@@ -29,6 +30,12 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
     .select("*")
     .eq("cliente_id", cliente.id)
     .order("created_at", { ascending: true });
+
+  const { data: materiales } = await supabase
+    .from("materiales_cliente")
+    .select("*, subidor:perfiles!subido_por(nombre_completo)")
+    .eq("cliente_id", cliente.id)
+    .order("created_at", { ascending: false });
 
   const { data: tareas } = await supabase
     .from("tareas")
@@ -177,6 +184,13 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
           </div>
         </section>
       )}
+
+      <MaterialesCliente
+        clienteId={cliente.id}
+        materialesIniciales={(materiales || []) as any}
+        userId={user!.id}
+        esRootOCeo={esRootOCeo}
+      />
 
       {/* Bitácora compartida — aquí es donde cualquier depto deja su nota/link */}
       <BitacoraCliente clienteId={cliente.id} userId={user!.id} entradasIniciales={bitacora || []} />

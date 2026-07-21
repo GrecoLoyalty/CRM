@@ -118,6 +118,21 @@ export const ESTADO_TICKET_COLOR: Record<EstadoTicket, string> = {
   cerrado: "bg-base-600 text-gray-400",
 };
 
+// ---------------------------------------------------------------------
+// Materiales del cliente (documentos, fotos, etc.)
+// ---------------------------------------------------------------------
+export interface MaterialCliente {
+  id: string;
+  cliente_id: string;
+  storage_path: string;
+  nombre_archivo: string;
+  tipo_mime: string | null;
+  tamano_bytes: number | null;
+  descripcion: string | null;
+  subido_por: string | null;
+  created_at: string;
+}
+
 // Fila de perfiles_departamentos: un departamento adicional de una persona.
 export interface PerfilDepartamento {
   perfil_id: string;
