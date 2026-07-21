@@ -60,6 +60,64 @@ export interface EventoInvitado {
   respuesta: RespuestaInvitacion;
 }
 
+// ---------------------------------------------------------------------
+// Tickets internos (departamento o personas puntuales)
+// ---------------------------------------------------------------------
+export type PrioridadTicket = "baja" | "media" | "alta" | "urgente";
+export type EstadoTicket = "abierto" | "en_progreso" | "resuelto" | "cerrado";
+
+export interface Ticket {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  prioridad: PrioridadTicket;
+  estado: EstadoTicket;
+  cliente_id: string | null;
+  depto_destino: Depto | null;
+  asignado_a: string | null;
+  creado_por: string;
+  resuelto_por: string | null;
+  resuelto_en: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketComentario {
+  id: string;
+  ticket_id: string;
+  autor_id: string;
+  mensaje: string;
+  created_at: string;
+}
+
+export const PRIORIDAD_LABEL: Record<PrioridadTicket, string> = {
+  baja: "Baja",
+  media: "Media",
+  alta: "Alta",
+  urgente: "Urgente",
+};
+
+export const PRIORIDAD_COLOR: Record<PrioridadTicket, string> = {
+  baja: "bg-base-600 text-gray-400",
+  media: "bg-signal-info/15 text-signal-info",
+  alta: "bg-signal-warn/15 text-signal-warn",
+  urgente: "bg-signal-urgent/15 text-signal-urgent",
+};
+
+export const ESTADO_TICKET_LABEL: Record<EstadoTicket, string> = {
+  abierto: "Abierto",
+  en_progreso: "En progreso",
+  resuelto: "Resuelto",
+  cerrado: "Cerrado",
+};
+
+export const ESTADO_TICKET_COLOR: Record<EstadoTicket, string> = {
+  abierto: "bg-signal-warn/15 text-signal-warn",
+  en_progreso: "bg-signal-info/15 text-signal-info",
+  resuelto: "bg-accent/15 text-accent-soft",
+  cerrado: "bg-base-600 text-gray-400",
+};
+
 // Fila de perfiles_departamentos: un departamento adicional de una persona.
 export interface PerfilDepartamento {
   perfil_id: string;
