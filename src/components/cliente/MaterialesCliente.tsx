@@ -89,6 +89,8 @@ export default function MaterialesCliente({
     setSubiendo(true);
     const supabase = createClient();
     const lista = Array.from(archivos);
+    const fallos: string[] = [];
+    let exitos = 0;
 
     for (const archivo of lista) {
       setProgreso(`Subiendo ${archivo.name}…`);
@@ -97,7 +99,8 @@ export default function MaterialesCliente({
 
       const { error: errStorage } = await supabase.storage.from("materiales-cliente").upload(path, archivo);
       if (errStorage) {
-        setError(`No se pudo subir "${archivo.name}": ${errStorage.message}`);
+        console.error("[materiales] error al subir al storage:", archivo.name, errStorage);
+        fallos.push(`"${archivo.name}": ${errStorage.message}`);
         continue;
       }
 
@@ -109,11 +112,26 @@ export default function MaterialesCliente({
         tamano_bytes: archivo.size,
         subido_por: userId,
       });
-      if (errMeta) setError(`Se subió "${archivo.name}" pero no se pudo registrar: ${errMeta.message}`);
+      if (errMeta) {
+        console.error("[materiales] se subió el archivo pero falló el registro:", archivo.name, errMeta);
+        fallos.push(`"${archivo.name}" se subió pero no se pudo registrar: ${errMeta.message}`);
+        // El archivo quedó huérfano en el bucket (sin fila en materiales_cliente);
+        // lo removemos para no dejar basura que nadie puede ver ni borrar desde el CRM.
+        await supabase.storage.from("materiales-cliente").remove([path]);
+        continue;
+      }
+      exitos++;
     }
 
     setProgreso(null);
     setSubiendo(false);
+
+    if (fallos.length > 0) {
+      setError(
+        `${exitos > 0 ? `Se subieron ${exitos} de ${lista.length} archivos. ` : "No se pudo subir ningún archivo. "}` +
+          `Falló: ${fallos.join(" · ")}`
+      );
+    }
     recargar();
   }
 
@@ -159,7 +177,14 @@ export default function MaterialesCliente({
       </div>
 
       {progreso && <p className="text-xs text-accent-soft mb-3">{progreso}</p>}
-      {error && <p className="text-xs text-signal-urgent mb-3">{error}</p>}
+      {error && (
+        <div className="flex items-start justify-between gap-3 bg-signal-urgent/10 border border-signal-urgent/40 text-signal-urgent text-sm rounded-lg px-3 py-2 mb-4">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 hover:opacity-70">
+            ✕
+          </button>
+        </div>
+      )}
 
       {materiales.length === 0 ? (
         <p className="text-sm text-gray-500">Todavía no hay materiales para este cliente.</p>
