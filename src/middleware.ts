@@ -8,11 +8,11 @@ import { NextResponse, type NextRequest } from "next/server";
 // la ficha de un cliente al que tiene acceso (RLS ya filtra los datos)
 // y ver su propia Vista de Águila.
 const RUTA_POR_ROL: Record<string, string[]> = {
-  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets"],
-  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets"],
-  analista: ["analisis", "cliente", "vista-aguila", "calendario", "tickets"],
-  vendedor: ["ventas", "cliente", "vista-aguila", "calendario", "tickets"],
-  produccion: ["estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets"],
+  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
+  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
+  analista: ["analisis", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
+  vendedor: ["ventas", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
+  produccion: ["estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
 };
 
 export async function middleware(request: NextRequest) {

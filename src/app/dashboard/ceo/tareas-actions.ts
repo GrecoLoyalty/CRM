@@ -31,7 +31,7 @@ export async function crearTareaManual(input: {
   clienteId?: string | null;
   fechaPactadaEntrega?: string | null;
 }) {
-  const { supabase } = await asegurarRootOCeo();
+  const { supabase, user } = await asegurarRootOCeo();
 
   if (!input.titulo.trim()) throw new Error("El título es obligatorio.");
   if (!input.asignadoA) throw new Error("Debes elegir a quién se le asigna la tarea.");
@@ -43,6 +43,7 @@ export async function crearTareaManual(input: {
     titulo: input.titulo.trim(),
     descripcion: input.descripcion?.trim() || null,
     asignado_a: input.asignadoA,
+    creado_por: user.id,
     asignado_automaticamente: false,
     origen: "manual",
     fecha_pactada_entrega: input.fechaPactadaEntrega || null,
@@ -50,5 +51,6 @@ export async function crearTareaManual(input: {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard/ceo/tareas");
+  revalidatePath("/dashboard/mis-tareas");
   revalidatePath(`/dashboard/${input.depto}`);
 }

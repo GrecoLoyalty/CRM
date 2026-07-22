@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import AsignarTareaManual from "@/components/ceo/AsignarTareaManual";
+import SeguimientoTareasManuales from "@/components/ceo/SeguimientoTareasManuales";
 import type { Depto } from "@/lib/types";
 
 export default async function TareasManualesPage() {
@@ -15,7 +16,9 @@ export default async function TareasManualesPage() {
       .order("nombre_empresa"),
     supabase
       .from("tareas")
-      .select("id, titulo, depto, estado, fecha_pactada_entrega, asignado_a, cliente_id, created_at, perfiles(nombre_completo), clientes(nombre_empresa)")
+      .select(
+        "id, titulo, depto, estado, respuesta_estado, link_entregable, fecha_pactada_entrega, asignado_a, cliente_id, created_at, perfiles!asignado_a(nombre_completo), clientes(nombre_empresa)"
+      )
       .eq("origen", "manual")
       .order("created_at", { ascending: false })
       .limit(20),
@@ -51,20 +54,7 @@ export default async function TareasManualesPage() {
       <div className="card p-5">
         <h2 className="font-display font-semibold mb-3">Últimas tareas asignadas manualmente</h2>
         {(tareasManuales || []).length === 0 && <p className="text-sm text-gray-500">Aún no has asignado ninguna tarea directa.</p>}
-        <div className="space-y-2">
-          {(tareasManuales || []).map((t: any) => (
-            <div key={t.id} className="flex items-center justify-between bg-base-900 border border-base-600 rounded-lg px-3 py-2 text-sm">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{t.titulo}</p>
-                <p className="text-xs text-gray-500">
-                  {t.perfiles?.nombre_completo || "—"} · {t.depto}
-                  {t.clientes?.nombre_empresa ? ` · ${t.clientes.nombre_empresa}` : " · Interna (sin cliente)"}
-                </p>
-              </div>
-              <span className="text-xs text-gray-500 shrink-0 ml-2">{t.estado}</span>
-            </div>
-          ))}
-        </div>
+        <SeguimientoTareasManuales tareas={(tareasManuales || []) as any} />
       </div>
     </div>
   );

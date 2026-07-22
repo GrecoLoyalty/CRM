@@ -49,9 +49,10 @@ export default function MaterialesCliente({
 
   async function generarUrls(lista: MaterialConSubidor[]) {
     const supabase = createClient();
+    const conArchivo = lista.filter((m) => m.storage_path);
     const entradas = await Promise.all(
-      lista.map(async (m) => {
-        const { data } = await supabase.storage.from("materiales-cliente").createSignedUrl(m.storage_path, 3600);
+      conArchivo.map(async (m) => {
+        const { data } = await supabase.storage.from("materiales-cliente").createSignedUrl(m.storage_path as string, 3600);
         return [m.id, data?.signedUrl || ""] as const;
       })
     );
@@ -138,7 +139,9 @@ export default function MaterialesCliente({
   async function eliminar(material: MaterialConSubidor) {
     if (!confirm(`¿Eliminar "${material.nombre_archivo}"? No se puede deshacer.`)) return;
     const supabase = createClient();
-    await supabase.storage.from("materiales-cliente").remove([material.storage_path]);
+    if (material.storage_path) {
+      await supabase.storage.from("materiales-cliente").remove([material.storage_path]);
+    }
     await supabase.from("materiales_cliente").delete().eq("id", material.id);
     recargar();
   }
@@ -192,7 +195,8 @@ export default function MaterialesCliente({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {materiales.map((m) => {
             const esImagen = m.tipo_mime?.startsWith("image/");
-            const url = urls[m.id];
+            const esLink = !m.storage_path && !!m.link_url;
+            const url = esLink ? (m.link_url as string) : urls[m.id];
             const puedeBorrar = m.subido_por === userId || esRootOCeo;
             return (
               <div key={m.id} className="group relative bg-base-900 border border-base-600 rounded-lg overflow-hidden">
@@ -202,7 +206,7 @@ export default function MaterialesCliente({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={url} alt={m.nombre_archivo} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-3xl">{iconoPara(m.tipo_mime, m.nombre_archivo)}</span>
+                      <span className="text-3xl">{esLink ? "🔗" : iconoPara(m.tipo_mime, m.nombre_archivo)}</span>
                     )}
                   </div>
                   <div className="p-2">
@@ -210,7 +214,7 @@ export default function MaterialesCliente({
                       {m.nombre_archivo}
                     </p>
                     <p className="text-[10px] text-gray-600">
-                      {formatearTamano(m.tamano_bytes)} · {format(new Date(m.created_at), "d MMM", { locale: es })}
+                      {esLink ? "Link externo" : formatearTamano(m.tamano_bytes)} · {format(new Date(m.created_at), "d MMM", { locale: es })}
                     </p>
                     <p className="text-[10px] text-gray-600 truncate">{m.subidor?.nombre_completo || "—"}</p>
                   </div>

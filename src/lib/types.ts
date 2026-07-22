@@ -124,7 +124,9 @@ export const ESTADO_TICKET_COLOR: Record<EstadoTicket, string> = {
 export interface MaterialCliente {
   id: string;
   cliente_id: string;
-  storage_path: string;
+  storage_path: string | null;
+  link_url: string | null;
+  tarea_id: string | null;
   nombre_archivo: string;
   tipo_mime: string | null;
   tamano_bytes: number | null;
@@ -190,6 +192,34 @@ export interface Cliente {
   updated_at: string;
 }
 
+export type RespuestaTarea = "sin_responder" | "visto" | "confirmado" | "en_proceso" | "finalizado";
+
+export const RESPUESTA_TAREA_LABEL: Record<RespuestaTarea, string> = {
+  sin_responder: "Sin responder",
+  visto: "Visto",
+  confirmado: "Confirmado",
+  en_proceso: "En proceso",
+  finalizado: "Finalizado",
+};
+
+export const RESPUESTA_TAREA_COLOR: Record<RespuestaTarea, string> = {
+  sin_responder: "bg-base-600 text-gray-400",
+  visto: "bg-signal-info/15 text-signal-info",
+  confirmado: "bg-accent/15 text-accent-soft",
+  en_proceso: "bg-signal-warn/15 text-signal-warn",
+  finalizado: "bg-green-500/15 text-green-400",
+};
+
+export interface TareaRespuestaHistorial {
+  id: string;
+  tarea_id: string;
+  perfil_id: string;
+  respuesta_estado: RespuestaTarea;
+  comentario: string | null;
+  link_entregable: string | null;
+  created_at: string;
+}
+
 export interface Tarea {
   id: string;
   cliente_id: string | null; // null = tarea interna/secundaria, no ligada a ningún cliente
@@ -198,7 +228,9 @@ export interface Tarea {
   titulo: string;
   descripcion: string | null;
   estado: EstadoTarea;
+  respuesta_estado: RespuestaTarea;
   asignado_a: string | null;
+  creado_por: string | null;
   fecha_pactada_entrega: string | null;
   link_entregable: string | null;
   progreso_pct: number;
