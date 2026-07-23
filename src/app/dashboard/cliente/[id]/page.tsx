@@ -6,6 +6,7 @@ import EliminarClienteBoton from "@/components/cliente/EliminarClienteBoton";
 import ControlEtapaCliente from "@/components/cliente/ControlEtapaCliente";
 import ResponsablesCliente from "@/components/cliente/ResponsablesCliente";
 import MaterialesCliente from "@/components/cliente/MaterialesCliente";
+import BotonExportarPDF from "@/components/cliente/BotonExportarPDF";
 import Link from "next/link";
 import { ESTADO_COLOR, type EstadoCliente } from "@/lib/types";
 
@@ -104,7 +105,10 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
       <div>
         <div className="flex items-center justify-between">
           <BotonVolver />
-          {miPerfil?.role === "root" && <EliminarClienteBoton clienteId={cliente.id} nombreEmpresa={cliente.nombre_empresa} />}
+          <div className="flex items-center gap-2">
+            <BotonExportarPDF clienteId={cliente.id} />
+            {miPerfil?.role === "root" && <EliminarClienteBoton clienteId={cliente.id} nombreEmpresa={cliente.nombre_empresa} />}
+          </div>
         </div>
         <div className="flex items-center gap-3 mt-2">
           <h1 className="text-2xl font-display font-semibold">{cliente.nombre_empresa}</h1>
