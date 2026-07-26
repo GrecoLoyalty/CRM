@@ -146,11 +146,28 @@ export default function MaterialesCliente({
     recargar();
   }
 
+  async function alternarVisiblePortal(material: MaterialConSubidor) {
+    const supabase = createClient();
+    setMateriales((prev) => prev.map((m) => (m.id === material.id ? { ...m, visible_portal: !m.visible_portal } : m)));
+    const { error } = await supabase
+      .from("materiales_cliente")
+      .update({ visible_portal: !material.visible_portal })
+      .eq("id", material.id);
+    if (error) {
+      console.error("[materiales] no se pudo cambiar visibilidad:", error);
+      recargar(); // revertir si falló
+    }
+  }
+
   return (
     <section className="card p-5">
-      <h2 className="font-display font-semibold text-sm text-gray-400 uppercase tracking-wide mb-3">
+      <h2 className="font-display font-semibold text-sm text-gray-400 uppercase tracking-wide mb-1">
         Materiales — documentos y fotos
       </h2>
+      <p className="text-xs text-gray-600 mb-3">
+        Por defecto, todo lo que subas aquí también lo ve el cliente en su portal. Puedes ocultar algo puntual con el
+        ícono de ojo si es interno/borrador.
+      </p>
 
       <div
         onDragOver={(e) => {
@@ -217,16 +234,29 @@ export default function MaterialesCliente({
                       {esLink ? "Link externo" : formatearTamano(m.tamano_bytes)} · {format(new Date(m.created_at), "d MMM", { locale: es })}
                     </p>
                     <p className="text-[10px] text-gray-600 truncate">{m.subidor?.nombre_completo || "—"}</p>
+                    {!m.visible_portal && <p className="text-[10px] text-signal-warn mt-0.5">🚫 Oculto para el cliente</p>}
                   </div>
                 </a>
                 {puedeBorrar && (
-                  <button
-                    onClick={() => eliminar(m)}
-                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    aria-label="Eliminar"
-                  >
-                    ✕
-                  </button>
+                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => alternarVisiblePortal(m)}
+                      className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
+                        m.visible_portal ? "bg-black/60 text-white" : "bg-signal-warn/80 text-base-900"
+                      }`}
+                      aria-label={m.visible_portal ? "Visible para el cliente — clic para ocultar" : "Oculto para el cliente — clic para mostrar"}
+                      title={m.visible_portal ? "Visible para el cliente" : "Oculto para el cliente"}
+                    >
+                      {m.visible_portal ? "👁" : "🚫"}
+                    </button>
+                    <button
+                      onClick={() => eliminar(m)}
+                      className="w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center"
+                      aria-label="Eliminar"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 )}
               </div>
             );

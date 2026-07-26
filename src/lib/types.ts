@@ -143,6 +143,7 @@ export interface MaterialCliente {
   tamano_bytes: number | null;
   descripcion: string | null;
   subido_por: string | null;
+  visible_portal: boolean;
   created_at: string;
 }
 

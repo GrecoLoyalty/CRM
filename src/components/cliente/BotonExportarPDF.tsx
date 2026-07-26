@@ -9,7 +9,10 @@ export default function BotonExportarPDF({ clienteId }: { clienteId: string }) {
     setGenerando(true);
     try {
       const res = await fetch(`/api/clientes/${clienteId}/pdf`);
-      if (!res.ok) throw new Error("No se pudo generar el PDF.");
+      if (!res.ok) {
+        const cuerpo = await res.json().catch(() => null);
+        throw new Error(cuerpo?.error || "No se pudo generar el PDF.");
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -20,8 +23,8 @@ export default function BotonExportarPDF({ clienteId }: { clienteId: string }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch (e) {
-      alert("No se pudo generar el PDF. Intenta de nuevo.");
+    } catch (e: any) {
+      alert(e.message || "No se pudo generar el PDF. Intenta de nuevo.");
     } finally {
       setGenerando(false);
     }

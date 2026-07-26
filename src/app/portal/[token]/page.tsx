@@ -70,6 +70,28 @@ export default async function PortalClientePage({ params }: { params: { token: s
   const ahora = new Date();
   const avisos = (avisosRaw || []).filter((a) => !a.expira_at || new Date(a.expira_at) > ahora);
 
+  // Materiales que Root/CEO/equipo subieron a la ficha y que están
+  // marcados como visibles para el cliente (todo por defecto, salvo lo
+  // que se oculte a propósito). Las fotos se muestran como miniatura; el
+  // resto, como un enlace de descarga/visualización.
+  const { data: materialesRaw } = await supabase
+    .from("materiales_cliente")
+    .select("id, storage_path, link_url, nombre_archivo, tipo_mime, created_at")
+    .eq("cliente_id", cliente.id)
+    .eq("visible_portal", true)
+    .order("created_at", { ascending: false });
+
+  const materiales = await Promise.all(
+    (materialesRaw || []).map(async (m) => {
+      let url = m.link_url;
+      if (m.storage_path) {
+        const { data } = await supabase.storage.from("materiales-cliente").createSignedUrl(m.storage_path, 3600);
+        url = data?.signedUrl || null;
+      }
+      return { ...m, url, esImagen: m.tipo_mime?.startsWith("image/") };
+    })
+  );
+
   const DEPTOS_ORDEN: Depto[] = ["ventas", "analisis", "estetica", "desarrollo"];
   const equipoPorDepto = DEPTOS_ORDEN.map((depto) => ({
     depto,
@@ -166,6 +188,35 @@ export default async function PortalClientePage({ params }: { params: { token: s
                     ))}
                   </ul>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {materiales.length > 0 && (
+          <div className="card p-6 mt-8">
+            <p className="text-xs uppercase tracking-wide text-gray-500 mb-4">Documentos y archivos de tu proyecto</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {materiales.map((m) => (
+                <a
+                  key={m.id}
+                  href={m.url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-base-800 border border-base-600 rounded-lg overflow-hidden hover:border-accent/40 transition-colors block"
+                >
+                  <div className="aspect-square bg-base-700 flex items-center justify-center overflow-hidden">
+                    {m.esImagen && m.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.url} alt={m.nombre_archivo} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-3xl">{m.link_url && !m.storage_path ? "🔗" : "📄"}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-300 truncate px-2 py-1.5" title={m.nombre_archivo}>
+                    {m.nombre_archivo}
+                  </p>
+                </a>
               ))}
             </div>
           </div>

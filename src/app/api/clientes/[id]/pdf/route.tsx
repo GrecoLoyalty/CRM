@@ -73,57 +73,67 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     created_at: n.created_at,
   }));
 
-  // Para las fotos, se descargan (servidor a servidor, con permisos de
-  // servicio) y se embeben directo en el PDF como base64 — se limita a las
-  // primeras imágenes para que la generación sea rápida.
+  // Para las fotos, se descargan en paralelo (servidor a servidor, con
+  // permisos de servicio) y se embeben directo en el PDF como base64 —
+  // se limita a las primeras 4 para que la generación sea rápida y no
+  // se acerque al límite de tiempo de una función serverless.
   const admin = createServiceClient();
-  const materiales: MaterialPDF[] = [];
-  let imagenesEmbebidas = 0;
-  for (const m of (materialesRaw || []) as any[]) {
-    const esImagen = !!m.storage_path && m.tipo_mime?.startsWith("image/");
-    let imagenBase64: string | null = null;
+  const LIMITE_IMAGENES = 4;
+  let cupoImagenes = LIMITE_IMAGENES;
 
-    if (esImagen && imagenesEmbebidas < 6) {
-      try {
-        const { data: blob } = await admin.storage.from("materiales-cliente").download(m.storage_path);
-        if (blob) {
-          const buffer = Buffer.from(await blob.arrayBuffer());
-          imagenBase64 = buffer.toString("base64");
-          imagenesEmbebidas++;
+  const materiales: MaterialPDF[] = await Promise.all(
+    ((materialesRaw || []) as any[]).map(async (m) => {
+      const esImagenCandidata = !!m.storage_path && m.tipo_mime?.startsWith("image/");
+      let imagenBase64: string | null = null;
+
+      if (esImagenCandidata && cupoImagenes > 0) {
+        cupoImagenes--;
+        try {
+          const { data: blob, error: errDescarga } = await admin.storage.from("materiales-cliente").download(m.storage_path);
+          if (!errDescarga && blob) {
+            const buffer = Buffer.from(await blob.arrayBuffer());
+            imagenBase64 = buffer.toString("base64");
+          }
+        } catch (e) {
+          console.error("[pdf] no se pudo descargar una imagen, se listará como texto:", m.nombre_archivo, e);
         }
-      } catch {
-        // si falla la descarga de una imagen puntual, se lista como texto y ya
       }
-    }
 
-    materiales.push({
-      nombre_archivo: m.nombre_archivo,
-      esImagen: esImagen && !!imagenBase64,
-      imagenBase64,
-      fecha: m.created_at,
-    });
-  }
-
-  const buffer = await renderToBuffer(
-    <FichaClientePDF
-      nombreEmpresa={cliente.nombre_empresa}
-      nombreContacto={cliente.nombre_contacto}
-      clienteCodigo={cliente.cliente_codigo}
-      estado={cliente.estado}
-      telefono={cliente.telefono}
-      email={cliente.email}
-      giro={cliente.giro?.nombre || null}
-      necesidadDetectada={cliente.necesidad_detectada}
-      presupuesto={cliente.presupuesto_estimado}
-      fechaCreacion={cliente.created_at}
-      fechaEntregaEstimada={cliente.fecha_entrega_estimada}
-      equipo={equipo}
-      etapas={etapasPDF}
-      notas={notasPDF}
-      materiales={materiales}
-      generadoPor={miPerfil?.nombre_completo || "—"}
-    />
+      return {
+        nombre_archivo: m.nombre_archivo,
+        esImagen: esImagenCandidata && !!imagenBase64,
+        imagenBase64,
+        fecha: m.created_at,
+      };
+    })
   );
+
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(
+      <FichaClientePDF
+        nombreEmpresa={cliente.nombre_empresa}
+        nombreContacto={cliente.nombre_contacto}
+        clienteCodigo={cliente.cliente_codigo}
+        estado={cliente.estado}
+        telefono={cliente.telefono}
+        email={cliente.email}
+        giro={cliente.giro?.nombre || null}
+        necesidadDetectada={cliente.necesidad_detectada}
+        presupuesto={cliente.presupuesto_estimado}
+        fechaCreacion={cliente.created_at}
+        fechaEntregaEstimada={cliente.fecha_entrega_estimada}
+        equipo={equipo}
+        etapas={etapasPDF}
+        notas={notasPDF}
+        materiales={materiales}
+        generadoPor={miPerfil?.nombre_completo || "—"}
+      />
+    );
+  } catch (e) {
+    console.error("[pdf] falló la generación del PDF:", e);
+    return NextResponse.json({ error: "No se pudo generar el PDF. Intenta de nuevo." }, { status: 500 });
+  }
 
   const nombreArchivo = `Ficha-${cliente.nombre_empresa.replace(/[^\w]+/g, "-")}.pdf`;
 
