@@ -118,6 +118,17 @@ export const ESTADO_TICKET_COLOR: Record<EstadoTicket, string> = {
   cerrado: "bg-base-600 text-gray-400",
 };
 
+export interface PortalAviso {
+  id: string;
+  cliente_id: string;
+  mensaje: string;
+  nivel: NivelUrgencia;
+  activo: boolean;
+  creado_por: string | null;
+  created_at: string;
+  expira_at: string | null;
+}
+
 // ---------------------------------------------------------------------
 // Materiales del cliente (documentos, fotos, etc.)
 // ---------------------------------------------------------------------

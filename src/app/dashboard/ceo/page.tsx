@@ -38,7 +38,7 @@ export default async function CeoPage() {
 
   const { data: clientesActivos } = await supabase
     .from("clientes")
-    .select("id, nombre_empresa, estado, portal_token")
+    .select("id, nombre_empresa, estado, portal_token, mostrar_ficha_portal")
     .neq("estado", "HISTORICO")
     .order("updated_at", { ascending: false });
 

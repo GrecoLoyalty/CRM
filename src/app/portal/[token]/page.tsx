@@ -24,6 +24,13 @@ const ETAPA_LABEL: Record<string, string> = {
   ENTREGADO: "Entregado",
 };
 
+const NIVEL_ESTILO: Record<string, string> = {
+  informativo: "bg-signal-info/15 text-signal-info border-signal-info/30",
+  importante: "bg-signal-warn/15 text-signal-warn border-signal-warn/30",
+  urgente: "bg-signal-urgent/15 text-signal-urgent border-signal-urgent/30",
+};
+const NIVEL_LABEL: Record<string, string> = { informativo: "Aviso", importante: "Importante", urgente: "Urgente" };
+
 export default async function PortalClientePage({ params }: { params: { token: string } }) {
   const supabase = createServiceClient();
 
@@ -51,6 +58,18 @@ export default async function PortalClientePage({ params }: { params: { token: s
     .select("depto, perfiles!perfil_id(nombre_completo, avatar_url)")
     .eq("cliente_id", cliente.id);
 
+  // Avisos extra de este cliente, aparte del comentario de etapa —
+  // descartamos los que ya expiraron sin tener que borrarlos a mano.
+  const { data: avisosRaw } = await supabase
+    .from("portal_avisos")
+    .select("*")
+    .eq("cliente_id", cliente.id)
+    .eq("activo", true)
+    .order("created_at", { ascending: false });
+
+  const ahora = new Date();
+  const avisos = (avisosRaw || []).filter((a) => !a.expira_at || new Date(a.expira_at) > ahora);
+
   const DEPTOS_ORDEN: Depto[] = ["ventas", "analisis", "estetica", "desarrollo"];
   const equipoPorDepto = DEPTOS_ORDEN.map((depto) => ({
     depto,
@@ -70,12 +89,33 @@ export default async function PortalClientePage({ params }: { params: { token: s
           <span className="font-display text-lg tracking-tight">GRESANOVA</span>
         </div>
 
+        {avisos.length > 0 && (
+          <div className="space-y-2 mb-6">
+            {avisos.map((a) => (
+              <div key={a.id} className={`border rounded-lg px-4 py-3 text-sm ${NIVEL_ESTILO[a.nivel]}`}>
+                <span className="font-semibold uppercase text-xs tracking-wide mr-2">{NIVEL_LABEL[a.nivel]}</span>
+                <span className="opacity-90">{a.mensaje}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="card p-6 mb-8">
           <p className="text-xs uppercase tracking-wide text-gray-500">Estatus de tu proyecto</p>
           <h1 className="text-2xl font-display font-semibold mt-1">{cliente.nombre_empresa}</h1>
           <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full ${ESTADO_COLOR[cliente.estado as keyof typeof ESTADO_COLOR]}`}>
             {ETAPA_LABEL[cliente.estado] || cliente.estado}
           </span>
+          {cliente.mostrar_ficha_portal && (
+            <a
+              href={`/api/portal/${params.token}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-4 text-xs px-3 py-1.5 rounded-lg bg-accent/15 text-accent-soft hover:bg-accent/25 transition-colors"
+            >
+              📄 Ver mi ficha completa
+            </a>
+          )}
         </div>
 
         <ol className="relative border-l border-base-600 ml-3 space-y-8">
