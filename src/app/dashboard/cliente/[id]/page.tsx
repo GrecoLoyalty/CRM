@@ -7,6 +7,7 @@ import ControlEtapaCliente from "@/components/cliente/ControlEtapaCliente";
 import ResponsablesCliente from "@/components/cliente/ResponsablesCliente";
 import MaterialesCliente from "@/components/cliente/MaterialesCliente";
 import BotonExportarPDF from "@/components/cliente/BotonExportarPDF";
+import EditarInfoCliente from "@/components/cliente/EditarInfoCliente";
 import Link from "next/link";
 import { ESTADO_COLOR, type EstadoCliente } from "@/lib/types";
 
@@ -25,6 +26,8 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
   const { data: giro } = cliente.giro_id
     ? await supabase.from("giros_industria").select("nombre").eq("id", cliente.giro_id).single()
     : { data: null };
+
+  const { data: giros } = await supabase.from("giros_industria").select("id, nombre").eq("activo", true).order("nombre");
 
   const { data: bitacora } = await supabase
     .from("cliente_bitacora")
@@ -134,6 +137,22 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
         analistas={analistas}
       />
 
+      <EditarInfoCliente
+        clienteId={cliente.id}
+        puedeEditar={esRootOCeo}
+        giros={giros || []}
+        datosIniciales={{
+          nombre_empresa: cliente.nombre_empresa,
+          nombre_contacto: cliente.nombre_contacto,
+          telefono: cliente.telefono,
+          email: cliente.email,
+          giro_id: cliente.giro_id,
+          presupuesto_estimado: cliente.presupuesto_estimado,
+          necesidad_detectada: cliente.necesidad_detectada,
+          notas_internas: cliente.notas_internas,
+        }}
+      />
+
       <ControlEtapaCliente clienteId={cliente.id} estadoActual={cliente.estado as EstadoCliente} puedeGestionar={esEncargado} />
 
       {/* Lo que dijo Ventas */}
@@ -165,6 +184,14 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
           <p className="text-sm text-gray-500">Aún no hay briefing — el cliente sigue en Análisis.</p>
         )}
       </section>
+
+      {/* Notas internas / datos extra — visibles para todo el equipo con acceso, editables solo por Root/CEO arriba */}
+      {cliente.notas_internas && (
+        <section className="card p-5">
+          <h2 className="font-display font-semibold text-sm text-gray-400 uppercase tracking-wide mb-2">Notas internas</h2>
+          <p className="text-sm whitespace-pre-wrap">{cliente.notas_internas}</p>
+        </section>
+      )}
 
       {/* Tareas y entregables por depto */}
       {tareas && tareas.length > 0 && (

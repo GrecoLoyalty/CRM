@@ -23,7 +23,7 @@ export default function LoginForm() {
       setError("Correo o contraseña incorrectos.");
       return;
     }
-    const destino = searchParams.get("next") || "/dashboard";
+    const destino = searchParams?.get("next") || "/dashboard";
     router.push(destino);
     router.refresh();
   }

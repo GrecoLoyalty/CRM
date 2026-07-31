@@ -10,13 +10,31 @@ export default async function DesarrolloPage() {
   const { data: perfil } = await supabase.from("perfiles").select("*").eq("id", user!.id).single();
   const esLider = perfil?.role === "root" || perfil?.role === "ceo";
 
+  // Mismo fix que en Estética/Ventas: considerar también cliente_equipo,
+  // no solo tareas.asignado_a, para que "Equipo asignado" (Panel Root →
+  // Clientes) sí le muestre algo a la persona marcada en el checklist.
+  let idsPorEquipo: string[] = [];
+  if (!esLider) {
+    const { data: equipo } = await supabase
+      .from("cliente_equipo")
+      .select("cliente_id")
+      .eq("perfil_id", user!.id)
+      .eq("depto", "desarrollo");
+    idsPorEquipo = (equipo || []).map((e) => e.cliente_id);
+  }
+
   let query = supabase
     .from("tareas")
     .select("*, cliente:clientes(*)")
     .eq("depto", "desarrollo")
     .neq("estado", "COMPLETADA")
     .order("fecha_pactada_entrega", { ascending: true, nullsFirst: false });
-  if (!esLider) query = query.eq("asignado_a", user!.id);
+
+  if (!esLider) {
+    query = idsPorEquipo.length > 0
+      ? query.or(`asignado_a.eq.${user!.id},cliente_id.in.(${idsPorEquipo.join(",")})`)
+      : query.eq("asignado_a", user!.id);
+  }
   const { data: tareas } = await query;
 
   const { data: apps } = await supabase.from("suite_apps").select("*").order("veces_reutilizada", { ascending: false });

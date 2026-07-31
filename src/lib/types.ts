@@ -200,6 +200,7 @@ export interface Cliente {
   portal_token: string;
   form_profundidad_token: string | null;
   fecha_entrega_estimada: string | null;
+  notas_internas: string | null;
   created_at: string;
   updated_at: string;
 }

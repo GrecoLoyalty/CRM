@@ -89,7 +89,7 @@ export default function SidebarNav({ perfil, onNavigate }: { perfil: Perfil; onN
             onClick={onNavigate}
             className={clsx(
               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-              pathname.startsWith(item.href)
+              pathname?.startsWith(item.href)
                 ? "bg-accent/15 text-accent-soft font-medium"
                 : "text-gray-400 hover:bg-base-700 hover:text-gray-200"
             )}

@@ -68,3 +68,39 @@ export async function eliminarCliente(clienteId: string) {
 
   redirect("/dashboard");
 }
+
+// Root/CEO editan la información base del cliente (datos de contacto,
+// necesidad detectada, presupuesto, giro) y pueden dejar notas internas
+// libres para cualquier dato extra que no encaje en un campo estructurado.
+// Igual que reasignarResponsables: la política RLS `clientes_root_ceo_update`
+// ya restringe esto a esos dos roles; aquí solo damos un mensaje claro.
+export async function actualizarInfoCliente(
+  clienteId: string,
+  datos: {
+    nombre_empresa: string;
+    nombre_contacto: string;
+    telefono: string;
+    email: string | null;
+    giro_id: string | null;
+    presupuesto_estimado: string | null;
+    necesidad_detectada: string;
+    notas_internas: string | null;
+  }
+) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (miPerfil?.role !== "root" && miPerfil?.role !== "ceo") {
+    throw new Error("Solo Root o CEO pueden editar la información del cliente.");
+  }
+
+  const { error } = await supabase.from("clientes").update(datos).eq("id", clienteId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/cliente/${clienteId}`);
+  revalidatePath("/dashboard/root/clientes");
+}
