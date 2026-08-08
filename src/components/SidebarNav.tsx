@@ -3,64 +3,22 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Icon from "@/components/ui/Icon";
+import { NAV_POR_ROL, resolverActivo } from "@/lib/navegacion";
 import type { Perfil } from "@/lib/types";
 import clsx from "clsx";
 
-const NAV_POR_ROL: Record<string, { href: string; label: string; icon: string }[]> = {
-  root: [
-    { href: "/dashboard/root", label: "Panel Root", icon: "◆" },
-    { href: "/dashboard/root/clientes", label: "Clientes", icon: "☰" },
-    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
-    { href: "/dashboard/tickets", label: "Tickets", icon: "🎫" },
-    { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "✅" },
-    { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
-    { href: "/dashboard/ceo/tareas", label: "Asignar tarea", icon: "✎" },
-    { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
-    { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
-    { href: "/dashboard/analisis", label: "Análisis", icon: "②" },
-    { href: "/dashboard/estetica", label: "Estética Visual", icon: "③" },
-    { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "④" },
-  ],
-  ceo: [
-    { href: "/dashboard/ceo", label: "Vista de Águila", icon: "◈" },
-    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
-    { href: "/dashboard/tickets", label: "Tickets", icon: "🎫" },
-    { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "✅" },
-    { href: "/dashboard/ceo/tareas", label: "Asignar tarea", icon: "✎" },
-    { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "🔒" },
-    { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
-    { href: "/dashboard/analisis", label: "Análisis", icon: "②" },
-    { href: "/dashboard/estetica", label: "Estética Visual", icon: "③" },
-    { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "④" },
-  ],
-  analista: [
-    { href: "/dashboard/analisis", label: "Análisis", icon: "②" },
-    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
-    { href: "/dashboard/tickets", label: "Tickets", icon: "🎫" },
-    { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "✅" },
-    { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
-  ],
-  vendedor: [
-    { href: "/dashboard/ventas", label: "Ventas", icon: "①" },
-    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
-    { href: "/dashboard/tickets", label: "Tickets", icon: "🎫" },
-    { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "✅" },
-    { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
-  ],
-  produccion: [
-    { href: "/dashboard/estetica", label: "Estética Visual", icon: "③" },
-    { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "④" },
-    { href: "/dashboard/calendario", label: "Calendario", icon: "📅" },
-    { href: "/dashboard/tickets", label: "Tickets", icon: "🎫" },
-    { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "✅" },
-    { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "◈" },
-  ],
-};
-
-export default function SidebarNav({ perfil, onNavigate }: { perfil: Perfil; onNavigate?: () => void }) {
+export default function SidebarNav({
+  perfil,
+  onNavigate,
+}: {
+  perfil: Perfil;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
-  const items = NAV_POR_ROL[perfil.role] || [];
+  const grupos = NAV_POR_ROL[perfil.role] || [];
+  const activo = resolverActivo(pathname, grupos);
 
   async function logout() {
     const supabase = createClient();
@@ -69,48 +27,127 @@ export default function SidebarNav({ perfil, onNavigate }: { perfil: Perfil; onN
     router.refresh();
   }
 
+  const iniciales = (perfil.nombre_completo || "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <aside className="w-64 md:w-60 h-full shrink-0 bg-base-800 border-r border-base-600 flex flex-col">
-      <div className="p-5 border-b border-base-600 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-accent flex items-center justify-center font-display font-bold text-base-900 text-sm">G</div>
-          <span className="font-display font-semibold tracking-tight">GRESANOVA OS</span>
-        </div>
-        <button onClick={onNavigate} className="md:hidden text-gray-500 text-lg leading-none" aria-label="Cerrar menú">
-          ✕
+    <aside className="w-64 md:w-60 h-full shrink-0 bg-base-850 border-r border-base-600 flex flex-col">
+      {/* ---------- Marca ---------- */}
+      <div className="relative p-4 border-b border-base-600 flex items-center justify-between filo-neon">
+        <Link
+          href="/dashboard"
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 min-w-0 group"
+        >
+          <div
+            className="w-8 h-8 rounded-lg bg-accent shadow-glow-accent flex items-center justify-center
+                       font-display font-bold text-base-950 text-sm shrink-0"
+          >
+            G
+          </div>
+          <div className="min-w-0">
+            <p className="font-display font-semibold tracking-tight text-gray-50 text-sm leading-tight">
+              GRESANOVA
+            </p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-gray-600 leading-tight">
+              Operating System
+            </p>
+          </div>
+        </Link>
+        <button
+          onClick={onNavigate}
+          className="md:hidden btn-ghost p-1.5"
+          aria-label="Cerrar menú"
+        >
+          <Icon name="cerrar" className="w-5 h-5" />
         </button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={clsx(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-              pathname?.startsWith(item.href)
-                ? "bg-accent/15 text-accent-soft font-medium"
-                : "text-gray-400 hover:bg-base-700 hover:text-gray-200"
+      {/* ---------- Navegación ---------- */}
+      <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+        {grupos.map((grupo, gi) => (
+          <div key={grupo.titulo ?? `grupo-${gi}`} className={gi > 0 ? "mt-5" : ""}>
+            {grupo.titulo && (
+              <p className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-600">
+                {grupo.titulo}
+              </p>
             )}
-          >
-            <span className="font-mono text-xs opacity-70">{item.icon}</span>
-            {item.label}
-          </Link>
+            <div className="space-y-0.5">
+              {grupo.items.map((item) => {
+                const esActivo = activo === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={esActivo ? "page" : undefined}
+                    className={clsx(
+                      "relative flex items-center gap-2.5 pl-3 pr-2.5 py-2 rounded-lg text-sm",
+                      "transition-colors duration-200",
+                      esActivo
+                        ? "bg-accent/12 text-accent-soft font-medium"
+                        : "text-gray-400 hover:bg-base-750 hover:text-gray-100"
+                    )}
+                  >
+                    {/* Filo neón del elemento activo */}
+                    {esActivo && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full
+                                   bg-accent-neon shadow-glow-cyan"
+                      />
+                    )}
+                    <Icon
+                      name={item.icon}
+                      className={clsx(
+                        "w-[18px] h-[18px] shrink-0 transition-colors duration-200",
+                        esActivo ? "text-accent-neon" : "text-gray-600"
+                      )}
+                    />
+                    <span className="truncar flex-1">{item.label}</span>
+                    {item.paso && (
+                      <span
+                        className={clsx(
+                          "font-mono text-[10px] tabular-nums shrink-0",
+                          esActivo ? "text-accent-soft/80" : "text-gray-700"
+                        )}
+                      >
+                        {item.paso}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </nav>
 
-      <div className="p-3 border-t border-base-600">
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="w-8 h-8 rounded-full bg-base-600 flex items-center justify-center text-xs font-semibold uppercase shrink-0">
-            {perfil.nombre_completo?.slice(0, 2)}
+      {/* ---------- Usuario ---------- */}
+      <div className="p-2.5 border-t border-base-600">
+        <div className="flex items-center gap-2.5 px-1.5 py-2">
+          <div
+            className="w-9 h-9 rounded-full bg-base-700 border border-base-500
+                       flex items-center justify-center text-[11px] font-semibold
+                       text-gray-200 shrink-0"
+          >
+            {iniciales || "··"}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm truncate">{perfil.nombre_completo}</p>
-            <p className="text-xs text-gray-500 capitalize">{perfil.role}{perfil.subrol ? ` · ${perfil.subrol}` : ""}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-gray-100 truncar">{perfil.nombre_completo}</p>
+            <p className="text-[11px] text-gray-500 capitalize truncar">
+              {perfil.role}
+              {perfil.subrol ? ` · ${perfil.subrol}` : ""}
+            </p>
           </div>
         </div>
-        <button onClick={logout} className="btn-secondary w-full mt-2 text-sm">
+        <button onClick={logout} className="btn-secondary w-full mt-1.5 text-sm">
+          <Icon name="salir" className="w-4 h-4" />
           Cerrar sesión
         </button>
       </div>
