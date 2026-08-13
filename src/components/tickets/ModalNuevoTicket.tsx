@@ -53,20 +53,20 @@ export default function ModalNuevoTicket({
     }
 
     startTransition(async () => {
-      try {
-        await crearTicket({
-          titulo,
-          descripcion,
-          prioridad,
-          destinoTipo,
-          depto: destinoTipo === "depto" ? depto : null,
-          destinatarios: destinoTipo === "personas" ? destinatarios : [],
-          clienteId: ligadoACliente ? clienteId || null : null,
-        });
-        onCreado();
-      } catch (e: any) {
-        setError(e.message || "No se pudo crear el ticket.");
+      const { error: errorCrear } = await crearTicket({
+        titulo,
+        descripcion,
+        prioridad,
+        destinoTipo,
+        depto: destinoTipo === "depto" ? depto : null,
+        destinatarios: destinoTipo === "personas" ? destinatarios : [],
+        clienteId: ligadoACliente ? clienteId || null : null,
+      });
+      if (errorCrear) {
+        setError(errorCrear);
+        return;
       }
+      onCreado();
     });
   }
 

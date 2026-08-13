@@ -44,22 +44,20 @@ export default function DetalleTicket({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticket.id]);
 
-  function accion(fn: () => Promise<void>) {
+  function accion(fn: () => Promise<{ error: string | null }>) {
     setError(null);
     startTransition(async () => {
-      try {
-        await fn();
-      } catch (e: any) {
-        setError(e.message || "Ocurrió un error.");
-      }
+      const { error: errorAccion } = await fn();
+      if (errorAccion) setError(errorAccion);
     });
   }
 
   function enviarComentario() {
     if (!mensaje.trim()) return;
     accion(async () => {
-      await comentarTicket(ticket.id, mensaje);
-      setMensaje("");
+      const resultado = await comentarTicket(ticket.id, mensaje);
+      if (!resultado.error) setMensaje("");
+      return resultado;
     });
   }
 
