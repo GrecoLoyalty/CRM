@@ -126,7 +126,16 @@ export async function crearTicket(input: TicketInput): Promise<{ ticket: any | n
       })
       .select()
       .single();
-    if (error) return { ticket: null, error: error.message };
+    if (error) {
+      // DIAGNÓSTICO TEMPORAL: mostramos qué ID de usuario intentó el
+      // servidor y si de plano llegó autenticado, para comparar contra la
+      // fila real en `perfiles`. Quitar esta línea extra en cuanto
+      // encontremos la causa real del choque de RLS.
+      return {
+        ticket: null,
+        error: `${error.message} — diagnóstico: user.id="${user.id}", email="${user.email}"`,
+      };
+    }
 
     let aNotificar: string[] = [];
     if (input.destinoTipo === "personas" && input.destinatarios) {
