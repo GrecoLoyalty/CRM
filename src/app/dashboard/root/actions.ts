@@ -113,13 +113,21 @@ export async function eliminarUsuario(perfilId: string): Promise<{ error: string
     }
 
     const service = createServiceClient();
-    const { error } = await service.auth.admin.deleteUser(perfilId);
-    if (error) return { error: error.message };
+    const { error, data } = await service.auth.admin.deleteUser(perfilId);
+    console.log("[root] eliminarUsuario resultado:", { perfilId, error, data });
+    if (error) {
+      // error.message a veces no es enumerable (por eso se veía "{}" en el
+      // alert del cliente al viajar por la Server Action) — forzamos a
+      // texto plano explícitamente.
+      const msg = typeof error.message === "string" && error.message ? error.message : `Error de Supabase (status ${(error as any).status ?? "desconocido"})`;
+      return { error: msg };
+    }
 
     revalidatePath("/dashboard/root");
     return { error: null };
   } catch (err: any) {
-    console.error("[root] eliminarUsuario falló:", err?.message || err);
-    return { error: err?.message || "No se pudo eliminar. Intenta de nuevo." };
+    const msg = typeof err?.message === "string" && err.message ? err.message : "No se pudo eliminar. Revisa los logs del servidor en Vercel para más detalle.";
+    console.error("[root] eliminarUsuario falló:", err);
+    return { error: msg };
   }
 }
