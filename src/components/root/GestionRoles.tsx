@@ -139,13 +139,13 @@ function FilaPerfil({
     if (!window.confirm(mensaje)) return;
 
     setEliminando(true);
-    try {
-      await eliminarUsuario(perfil.id);
-      setEliminado(true);
-    } catch (e: any) {
-      alert(e.message || "No se pudo eliminar.");
+    const { error } = await eliminarUsuario(perfil.id);
+    if (error) {
+      alert(error);
       setEliminando(false);
+      return;
     }
+    setEliminado(true);
   }
 
   if (eliminado) return null;

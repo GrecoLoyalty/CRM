@@ -87,25 +87,39 @@ export async function alternarActivo(perfilId: string, activo: boolean) {
 // (lo que en cascada borra su fila en `perfiles` gracias al FK con
 // ON DELETE CASCADE). Sirve tanto para rechazar solicitudes pendientes
 // como para dar de baja a un usuario ya activo.
-export async function eliminarUsuario(perfilId: string) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
+//
+// IMPORTANTE: esta función regresa { error } en vez de hacer `throw`.
+// Next.js oculta en producción el mensaje real de cualquier error que
+// se lance ("throw") desde una Server Action — el cliente solo recibe
+// un texto genérico ("An error occurred in the Server Components
+// render...") sin importar cuál haya sido el problema real. Regresando
+// el error como dato normal (igual que ya hace src/app/dashboard/tickets/actions.ts),
+// el mensaje real sí llega intacto a la UI.
+export async function eliminarUsuario(perfilId: string): Promise<{ error: string | null }> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
 
-  if (perfilId === user.id) {
-    throw new Error("No puedes eliminar tu propia cuenta.");
+    if (perfilId === user.id) {
+      return { error: "No puedes eliminar tu propia cuenta." };
+    }
+
+    const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+    if (miPerfil?.role !== "root") {
+      return { error: "Solo Root puede eliminar usuarios." };
+    }
+
+    const service = createServiceClient();
+    const { error } = await service.auth.admin.deleteUser(perfilId);
+    if (error) return { error: error.message };
+
+    revalidatePath("/dashboard/root");
+    return { error: null };
+  } catch (err: any) {
+    console.error("[root] eliminarUsuario falló:", err?.message || err);
+    return { error: err?.message || "No se pudo eliminar. Intenta de nuevo." };
   }
-
-  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
-  if (miPerfil?.role !== "root") {
-    throw new Error("Solo Root puede eliminar usuarios.");
-  }
-
-  const service = createServiceClient();
-  const { error } = await service.auth.admin.deleteUser(perfilId);
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/dashboard/root");
 }
