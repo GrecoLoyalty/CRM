@@ -127,13 +127,17 @@ export async function crearTicket(input: TicketInput): Promise<{ ticket: any | n
       .select()
       .single();
     if (error) {
-      // DIAGNÓSTICO TEMPORAL: mostramos qué ID de usuario intentó el
-      // servidor y si de plano llegó autenticado, para comparar contra la
-      // fila real en `perfiles`. Quitar esta línea extra en cuanto
-      // encontremos la causa real del choque de RLS.
+      // DIAGNÓSTICO TEMPORAL: la política y el perfil ya se confirmaron
+      // correctos, así que ahora comparamos contra lo que Postgres ve
+      // REALMENTE como auth.uid() en esta misma petición autenticada
+      // (fn_debug_auth_uid, ver migración 0024). Si auth_uid sale null
+      // o distinto de user.id, confirma que la sesión no se está
+      // propagando bien a esta llamada. Quitar todo este bloque en
+      // cuanto encontremos la causa real.
+      const { data: debugAuth, error: errDebug } = await supabase.rpc("fn_debug_auth_uid");
       return {
         ticket: null,
-        error: `${error.message} — diagnóstico: user.id="${user.id}", email="${user.email}"`,
+        error: `${error.message} — diagnóstico: user.id="${user.id}", email="${user.email}", fn_debug_auth_uid=${JSON.stringify(debugAuth)}${errDebug ? `, errDebug=${errDebug.message}` : ""}`,
       };
     }
 
