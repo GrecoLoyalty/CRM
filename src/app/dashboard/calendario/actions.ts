@@ -3,8 +3,21 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { enviarEmail } from "@/lib/email";
+import { crearEventoGoogle, actualizarEventoGoogle, eliminarEventoGoogle } from "@/lib/google/calendar";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+
+// Junta los correos reales (auth.users) de una lista de perfiles. Se usa
+// tanto para las notificaciones internas por correo como para invitar a
+// esas mismas personas dentro del evento espejo de Google Calendar.
+async function obtenerEmailsDePerfiles(admin: ReturnType<typeof createServiceClient>, perfilIds: string[]) {
+  const emails: string[] = [];
+  for (const perfilId of perfilIds) {
+    const { data } = await admin.auth.admin.getUserById(perfilId);
+    if (data?.user?.email) emails.push(data.user.email);
+  }
+  return emails;
+}
 
 interface EventoInput {
   titulo: string;
@@ -119,6 +132,27 @@ export async function crearEvento(input: EventoInput) {
     eventoId: evento.id,
   });
 
+  // Si el organizador conectó su cuenta de Google, el evento también se crea
+  // en su Google Calendar personal, con el resto de invitados como
+  // asistentes. Si no la conectó, esto simplemente no hace nada (best effort).
+  const admin = createServiceClient();
+  const emailsInvitados = await obtenerEmailsDePerfiles(admin, invitadosAAvisar);
+  const googleEventId = await crearEventoGoogle(user.id, {
+    titulo: evento.titulo,
+    descripcion: evento.descripcion,
+    fechaInicio: evento.fecha_inicio,
+    fechaFin: evento.fecha_fin,
+    todoElDia: evento.todo_el_dia,
+    ubicacion: evento.ubicacion,
+    invitadosEmails: emailsInvitados,
+  });
+  if (googleEventId) {
+    await supabase
+      .from("eventos_calendario")
+      .update({ google_event_id: googleEventId, google_calendar_perfil_id: user.id })
+      .eq("id", evento.id);
+  }
+
   revalidatePath("/dashboard/calendario");
   return evento;
 }
@@ -182,14 +216,44 @@ export async function actualizarEvento(eventoId: string, input: EventoInput) {
     });
   }
 
+  // Refleja los cambios en el evento espejo de Google Calendar, si existe.
+  const admin = createServiceClient();
+  if (evento.google_event_id && evento.google_calendar_perfil_id) {
+    const idsInvitadosFinal = idsUnicos.filter((id) => id !== evento.creado_por);
+    const emailsInvitados = await obtenerEmailsDePerfiles(admin, idsInvitadosFinal);
+    await actualizarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id, {
+      titulo: evento.titulo,
+      descripcion: evento.descripcion,
+      fechaInicio: evento.fecha_inicio,
+      fechaFin: evento.fecha_fin,
+      todoElDia: evento.todo_el_dia,
+      ubicacion: evento.ubicacion,
+      invitadosEmails: emailsInvitados,
+    });
+  }
+
   revalidatePath("/dashboard/calendario");
   return evento;
 }
 
 export async function eliminarEvento(eventoId: string) {
   const supabase = createClient();
+
+  // Se necesita saber si había un evento espejo en Google ANTES de borrar
+  // la fila (para poder borrarlo también allá).
+  const { data: evento } = await supabase
+    .from("eventos_calendario")
+    .select("google_event_id, google_calendar_perfil_id")
+    .eq("id", eventoId)
+    .single();
+
   const { error } = await supabase.from("eventos_calendario").delete().eq("id", eventoId);
   if (error) throw new Error(error.message);
+
+  if (evento?.google_event_id && evento?.google_calendar_perfil_id) {
+    await eliminarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id);
+  }
+
   revalidatePath("/dashboard/calendario");
 }
 

@@ -146,6 +146,14 @@ export default function SidebarNav({
             </p>
           </div>
         </div>
+        <Link
+          href="/dashboard/integraciones"
+          onClick={onNavigate}
+          className="btn-ghost w-full mt-1.5 text-sm justify-start px-1.5"
+        >
+          <Icon name="ajustes" className="w-4 h-4" />
+          Integraciones
+        </Link>
         <button onClick={logout} className="btn-secondary w-full mt-1.5 text-sm">
           <Icon name="salir" className="w-4 h-4" />
           Cerrar sesión
