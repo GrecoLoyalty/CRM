@@ -60,6 +60,19 @@ export interface EventoInvitado {
   respuesta: RespuestaInvitacion;
 }
 
+export type EstadoAgendaPersonal = "ocupado" | "disponible";
+
+export interface AgendaPersonal {
+  id: string;
+  perfil_id: string;
+  titulo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  estado: EstadoAgendaPersonal;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---------------------------------------------------------------------
 // Tickets internos (departamento o personas puntuales)
 // ---------------------------------------------------------------------

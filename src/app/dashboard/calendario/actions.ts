@@ -30,6 +30,41 @@ interface EventoInput {
   invitados: string[]; // ids de perfiles (sin contar al creador)
 }
 
+interface AgendaPersonalInput {
+  titulo: string;
+  fechaInicio: string;
+  fechaFin: string;
+  estado: "ocupado" | "disponible";
+}
+
+export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+  if (!input.titulo.trim()) throw new Error("El bloque necesita un título.");
+  if (new Date(input.fechaFin) <= new Date(input.fechaInicio)) {
+    throw new Error("La fecha de fin debe ser posterior a la de inicio.");
+  }
+
+  const { data, error } = await supabase.from("agenda_personal").insert({
+    perfil_id: user.id,
+    titulo: input.titulo.trim(),
+    fecha_inicio: input.fechaInicio,
+    fecha_fin: input.fechaFin,
+    estado: input.estado,
+  }).select().single();
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/calendario");
+  return data;
+}
+
+export async function eliminarBloqueAgendaPersonal(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("agenda_personal").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/calendario");
+}
+
 // Notifica (campanita interna + correo) a cada invitado. Usa el cliente de
 // servicio porque la tabla `notificaciones` no tiene política de INSERT
 // para usuarios normales (solo se escribe desde funciones/lógica de

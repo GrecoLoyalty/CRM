@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { EventoCalendario, EventoInvitado, Perfil } from "@/lib/types";
 import ModalEvento from "@/components/calendario/ModalEvento";
 import DetalleEvento from "@/components/calendario/DetalleEvento";
+import AgendaPersonal from "@/components/calendario/AgendaPersonal";
 
 interface PerfilLigero {
   id: string;
@@ -49,6 +50,7 @@ export default function CalendarioCompartido({
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
   const [eventoEnEdicion, setEventoEnEdicion] = useState<EventoCalendario | null>(null);
   const [eventoSeleccionado, setEventoSeleccionado] = useState<EventoCalendario | null>(null);
+  const [vista, setVista] = useState<"general" | "disponibilidad">("general");
 
   const perfilesPorId = useMemo(() => new Map(perfiles.map((p) => [p.id, p])), [perfiles]);
 
@@ -111,6 +113,12 @@ export default function CalendarioCompartido({
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-2 border-b border-base-700 pb-3">
+        <button onClick={() => setVista("general")} className={vista === "general" ? "btn-primary text-sm" : "btn-secondary text-sm"}>Calendario general</button>
+        <button onClick={() => setVista("disponibilidad")} className={vista === "disponibilidad" ? "btn-primary text-sm" : "btn-secondary text-sm"}>Disponibilidad del equipo</button>
+      </div>
+      {vista === "disponibilidad" && <AgendaPersonal perfiles={perfiles} userId={userId} />}
+      {vista === "general" && <>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <button onClick={() => setMesActual((m) => subMonths(m, 1))} className="btn-secondary px-3 py-1.5 text-sm">
@@ -233,6 +241,7 @@ export default function CalendarioCompartido({
           }}
         />
       )}
+      </>}
     </div>
   );
 }
