@@ -16,7 +16,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
-import type { EventoCalendario, EventoInvitado, Perfil } from "@/lib/types";
+import type { AgendaPersonal as AgendaPersonalBloque, EventoCalendario, EventoInvitado, Perfil } from "@/lib/types";
 import ModalEvento from "@/components/calendario/ModalEvento";
 import DetalleEvento from "@/components/calendario/DetalleEvento";
 import AgendaPersonal from "@/components/calendario/AgendaPersonal";
@@ -50,6 +50,7 @@ export default function CalendarioCompartido({
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
   const [eventoEnEdicion, setEventoEnEdicion] = useState<EventoCalendario | null>(null);
   const [eventoSeleccionado, setEventoSeleccionado] = useState<EventoCalendario | null>(null);
+  const [disponibilidades, setDisponibilidades] = useState<AgendaPersonalBloque[]>([]);
   const [vista, setVista] = useState<"general" | "disponibilidad">("general");
 
   const perfilesPorId = useMemo(() => new Map(perfiles.map((p) => [p.id, p])), [perfiles]);
@@ -66,14 +67,24 @@ export default function CalendarioCompartido({
     const rangoInicio = diasVisibles[0];
     const rangoFin = diasVisibles[diasVisibles.length - 1];
 
-    const { data: eventosData } = await supabase
+    const [{ data: eventosData }, { data: disponibilidadData }] = await Promise.all([
+      supabase
       .from("eventos_calendario")
       .select("*")
       .lte("fecha_inicio", rangoFin.toISOString())
       .gte("fecha_fin", rangoInicio.toISOString())
-      .order("fecha_inicio");
+      .order("fecha_inicio"),
+      supabase
+        .from("agenda_personal")
+        .select("*")
+        .eq("estado", "disponible")
+        .lte("fecha_inicio", rangoFin.toISOString())
+        .gte("fecha_fin", rangoInicio.toISOString())
+        .order("fecha_inicio"),
+    ]);
 
     setEventos(eventosData || []);
+    setDisponibilidades(disponibilidadData || []);
 
     if (eventosData && eventosData.length > 0) {
       const { data: invitadosData } = await supabase
@@ -100,6 +111,7 @@ export default function CalendarioCompartido({
       .channel("calendario-compartido")
       .on("postgres_changes", { event: "*", schema: "public", table: "eventos_calendario" }, () => cargarEventos())
       .on("postgres_changes", { event: "*", schema: "public", table: "evento_invitados" }, () => cargarEventos())
+      .on("postgres_changes", { event: "*", schema: "public", table: "agenda_personal" }, () => cargarEventos())
       .subscribe();
     return () => {
       supabase.removeChannel(canal);
@@ -111,11 +123,19 @@ export default function CalendarioCompartido({
     return eventos.filter((e) => isWithinInterval(dia, { start: new Date(e.fecha_inicio), end: new Date(e.fecha_fin) }) || isSameDay(dia, new Date(e.fecha_inicio)));
   }
 
+  function disponibilidadDelDia(dia: Date) {
+    return disponibilidades.filter((bloque) => {
+      const inicio = new Date(bloque.fecha_inicio);
+      const fin = new Date(bloque.fecha_fin);
+      return isSameDay(dia, inicio) || (dia >= inicio && dia <= fin);
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b border-base-700 pb-3">
         <button onClick={() => setVista("general")} className={vista === "general" ? "btn-primary text-sm" : "btn-secondary text-sm"}>Calendario general</button>
-        <button onClick={() => setVista("disponibilidad")} className={vista === "disponibilidad" ? "btn-primary text-sm" : "btn-secondary text-sm"}>Disponibilidad del equipo</button>
+        <button onClick={() => setVista("disponibilidad")} className={vista === "disponibilidad" ? "btn-primary text-sm" : "btn-secondary text-sm"}>Mi calendario personal</button>
       </div>
       {vista === "disponibilidad" && <AgendaPersonal perfiles={perfiles} userId={userId} />}
       {vista === "general" && <>
@@ -150,6 +170,7 @@ export default function CalendarioCompartido({
             const esDelMes = isSameMonth(dia, mesActual);
             const esHoy = isSameDay(dia, new Date());
             const eventosDia = eventosDelDia(dia);
+            const disponibilidadDia = disponibilidadDelDia(dia);
             return (
               <div
                 key={dia.toISOString()}
@@ -178,6 +199,13 @@ export default function CalendarioCompartido({
                   })}
                   {eventosDia.length > 3 && <p className="text-[10px] text-gray-500 px-1">+{eventosDia.length - 3} más</p>}
                 </div>
+                {disponibilidadDia.length > 0 && <div className="mt-2 border-t border-green-400/20 pt-1 space-y-1">
+                  <p className="text-[9px] uppercase tracking-wide text-green-400">Libres</p>
+                  {disponibilidadDia.slice(0, 3).map((bloque) => <div key={bloque.id} className="rounded bg-green-500/10 px-1 py-0.5 text-[9px] text-green-300 truncate" title={`${perfilesPorId.get(bloque.perfil_id)?.nombre_completo || "Miembro"}: ${format(new Date(bloque.fecha_inicio), "HH:mm")} - ${format(new Date(bloque.fecha_fin), "HH:mm")}`}>
+                    {perfilesPorId.get(bloque.perfil_id)?.nombre_completo || "Miembro"} · {format(new Date(bloque.fecha_inicio), "HH:mm")} - {format(new Date(bloque.fecha_fin), "HH:mm")}
+                  </div>)}
+                  {disponibilidadDia.length > 3 && <p className="text-[9px] text-green-500">+{disponibilidadDia.length - 3} disponibles</p>}
+                </div>}
               </div>
             );
           })}

@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+} from "date-fns";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import { crearBloqueAgendaPersonal, eliminarBloqueAgendaPersonal } from "@/app/dashboard/calendario/actions";
@@ -16,9 +27,13 @@ interface PerfilAgenda {
 export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilAgenda[]; userId: string }) {
   const [mes, setMes] = useState(() => startOfMonth(new Date()));
   const [bloques, setBloques] = useState<AgendaPersonal[]>([]);
-  const [perfilSeleccionado, setPerfilSeleccionado] = useState(userId);
   const [cargando, setCargando] = useState(true);
   const [modalAbierto, setModalAbierto] = useState(false);
+
+  const diasVisibles = useMemo(() => eachDayOfInterval({
+    start: startOfWeek(startOfMonth(mes), { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(mes), { weekStartsOn: 1 }),
+  }), [mes]);
 
   async function cargar() {
     setCargando(true);
@@ -26,7 +41,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
     const { data } = await supabase
       .from("agenda_personal")
       .select("*")
-      .eq("perfil_id", perfilSeleccionado)
+      .eq("perfil_id", userId)
       .lte("fecha_inicio", endOfMonth(mes).toISOString())
       .gte("fecha_fin", startOfMonth(mes).toISOString())
       .order("fecha_inicio");
@@ -37,49 +52,44 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
   useEffect(() => {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mes, perfilSeleccionado]);
+  }, [mes, userId]);
 
-  const perfil = useMemo(() => perfiles.find((p) => p.id === perfilSeleccionado), [perfiles, perfilSeleccionado]);
+  const bloquesDelDia = (dia: Date) => bloques.filter((bloque) => {
+    const inicio = new Date(bloque.fecha_inicio);
+    const fin = new Date(bloque.fecha_fin);
+    return isSameDay(dia, inicio) || (dia >= inicio && dia <= fin);
+  });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <label className="label-field">Consultar agenda de</label>
-          <select value={perfilSeleccionado} onChange={(e) => setPerfilSeleccionado(e.target.value)} className="input-field max-w-xs">
-            {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre_completo}</option>)}
-          </select>
+          <p className="text-xs uppercase tracking-wide text-gray-500">Mi calendario personal</p>
+          <p className="text-sm text-gray-400">Marca cuándo estás ocupado o disponible para el equipo.</p>
         </div>
         <button onClick={() => setModalAbierto(true)} className="btn-primary text-sm">+ Añadir bloque</button>
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={() => setMes((actual) => new Date(actual.getFullYear(), actual.getMonth() - 1, 1))} className="btn-secondary px-3 py-1.5 text-sm">←</button>
+        <button onClick={() => setMes((actual) => subMonths(actual, 1))} className="btn-secondary px-3 py-1.5 text-sm">←</button>
         <p className="font-display font-semibold capitalize w-40 text-center">{format(mes, "MMMM yyyy", { locale: es })}</p>
-        <button onClick={() => setMes((actual) => new Date(actual.getFullYear(), actual.getMonth() + 1, 1))} className="btn-secondary px-3 py-1.5 text-sm">→</button>
+        <button onClick={() => setMes((actual) => addMonths(actual, 1))} className="btn-secondary px-3 py-1.5 text-sm">→</button>
       </div>
 
       <div className="card p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: perfil?.color_calendario || "#3AA7A1" }} />
-          <h2 className="font-display font-semibold">Bloques de {perfil?.nombre_completo || "la persona"}</h2>
-        </div>
-        {cargando ? <p className="text-sm text-gray-500">Cargando agenda...</p> : bloques.length === 0 ? <p className="text-sm text-gray-500">No hay bloques registrados este mes.</p> : (
-          <div className="space-y-2">
-            {bloques.map((bloque) => (
-              <div key={bloque.id} className="flex items-center justify-between gap-3 border-b border-base-700 py-2 last:border-0">
-                <div>
-                  <p className="text-sm font-medium">{bloque.titulo}</p>
-                  <p className="text-xs text-gray-500">{format(new Date(bloque.fecha_inicio), "EEE d MMM, HH:mm", { locale: es })} - {format(new Date(bloque.fecha_fin), "HH:mm")}</p>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded ${bloque.estado === "disponible" ? "bg-green-500/15 text-green-400" : "bg-signal-urgent/15 text-signal-urgent"}`}>
-                  {bloque.estado === "disponible" ? "Disponible" : "Ocupado"}
-                </span>
-                {bloque.perfil_id === userId && <button onClick={async () => { await eliminarBloqueAgendaPersonal(bloque.id); cargar(); }} className="text-xs text-gray-500 hover:text-signal-urgent">Eliminar</button>}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-7 gap-1 mb-2">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((dia) => <div key={dia} className="text-center text-xs text-gray-500 font-medium py-1">{dia}</div>)}</div>
+        {cargando ? <p className="text-sm text-gray-500 py-6">Cargando agenda...</p> : <div className="grid grid-cols-7 gap-1">
+          {diasVisibles.map((dia) => {
+            const bloquesDia = bloquesDelDia(dia);
+            return <div key={dia.toISOString()} className={`min-h-[108px] rounded-lg border p-1.5 ${isSameMonth(dia, mes) ? "border-base-600 bg-base-900" : "border-base-700/40"}`}>
+              <p className={`text-xs mb-1 ${isSameDay(dia, new Date()) ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent text-base-900 font-bold" : "text-gray-400"}`}>{format(dia, "d")}</p>
+              <div className="space-y-1">{bloquesDia.map((bloque) => <div key={bloque.id} className={`group relative rounded px-1.5 py-1 text-[10px] sm:text-xs ${bloque.estado === "disponible" ? "bg-green-500/15 text-green-300" : "bg-signal-urgent/15 text-signal-urgent"}`} title={`${bloque.titulo} · ${format(new Date(bloque.fecha_inicio), "HH:mm")} - ${format(new Date(bloque.fecha_fin), "HH:mm")}`}>
+                <p className="truncate font-medium">{bloque.titulo}</p><p>{format(new Date(bloque.fecha_inicio), "HH:mm")} - {format(new Date(bloque.fecha_fin), "HH:mm")}</p>
+                <button onClick={() => eliminarBloqueAgendaPersonal(bloque.id).then(cargar)} className="absolute right-1 top-1 hidden group-hover:block text-[10px]" aria-label={`Eliminar ${bloque.titulo}`}>×</button>
+              </div>)}</div>
+            </div>;
+          })}
+        </div>}
       </div>
 
       {modalAbierto && <NuevoBloque onCerrar={() => setModalAbierto(false)} onGuardado={() => { setModalAbierto(false); cargar(); }} />}
