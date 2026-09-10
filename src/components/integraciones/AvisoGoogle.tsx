@@ -7,16 +7,17 @@ export default function AvisoGoogle() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const estado = params.get("google");
-  const motivo = params.get("motivo");
+  const estado = params?.get("google") ?? null;
+  const motivo = params?.get("motivo") ?? null;
+  const rutaActual = pathname || "/";
 
   // Limpia el query param de la URL después de mostrarlo, para que un
   // refresh no vuelva a disparar el aviso.
   useEffect(() => {
     if (!estado) return;
-    const t = setTimeout(() => router.replace(pathname), 4000);
+    const t = setTimeout(() => router.replace(rutaActual), 4000);
     return () => clearTimeout(t);
-  }, [estado, pathname, router]);
+  }, [estado, rutaActual, router]);
 
   if (!estado) return null;
 

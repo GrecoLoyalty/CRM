@@ -69,6 +69,10 @@ export interface AgendaPersonal {
   fecha_inicio: string;
   fecha_fin: string;
   estado: EstadoAgendaPersonal;
+  notas?: string | null;
+  ubicacion?: string | null;
+  alguien_ira_conmigo?: string | null;
+  recordatorio?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -83,8 +83,12 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
             const bloquesDia = bloquesDelDia(dia);
             return <div key={dia.toISOString()} className={`min-h-[108px] rounded-lg border p-1.5 ${isSameMonth(dia, mes) ? "border-base-600 bg-base-900" : "border-base-700/40"}`}>
               <p className={`text-xs mb-1 ${isSameDay(dia, new Date()) ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent text-base-900 font-bold" : "text-gray-400"}`}>{format(dia, "d")}</p>
-              <div className="space-y-1">{bloquesDia.map((bloque) => <div key={bloque.id} className={`group relative rounded px-1.5 py-1 text-[10px] sm:text-xs ${bloque.estado === "disponible" ? "bg-green-500/15 text-green-300" : "bg-signal-urgent/15 text-signal-urgent"}`} title={`${bloque.titulo} · ${format(new Date(bloque.fecha_inicio), "HH:mm")} - ${format(new Date(bloque.fecha_fin), "HH:mm")}`}>
+              <div className="space-y-1">{bloquesDia.map((bloque) => <div key={bloque.id} className={`group relative rounded px-1.5 py-1 text-[10px] sm:text-xs ${bloque.estado === "disponible" ? "bg-green-500/15 text-green-300" : "bg-signal-urgent/15 text-signal-urgent"}`} title={`${bloque.titulo} · ${format(new Date(bloque.fecha_inicio), "HH:mm")} - ${format(new Date(bloque.fecha_fin), "HH:mm")} · ${bloque.ubicacion || ""} · ${bloque.notas || ""} · ${bloque.alguien_ira_conmigo || ""} · ${bloque.recordatorio || ""}`}>
                 <p className="truncate font-medium">{bloque.titulo}</p><p>{format(new Date(bloque.fecha_inicio), "HH:mm")} - {format(new Date(bloque.fecha_fin), "HH:mm")}</p>
+                {bloque.ubicacion && <p className="truncate text-[9px] text-gray-300">📍 {bloque.ubicacion}</p>}
+                {bloque.alguien_ira_conmigo && <p className="truncate text-[9px] text-gray-300">👤 {bloque.alguien_ira_conmigo}</p>}
+                {bloque.recordatorio && <p className="truncate text-[9px] text-gray-300">🔔 {bloque.recordatorio}</p>}
+                {bloque.notas && <p className="truncate text-[9px] text-gray-300">✎ {bloque.notas}</p>}
                 <button onClick={() => eliminarBloqueAgendaPersonal(bloque.id).then(cargar)} className="absolute right-1 top-1 hidden group-hover:block text-[10px]" aria-label={`Eliminar ${bloque.titulo}`}>×</button>
               </div>)}</div>
             </div>;
@@ -103,13 +107,26 @@ function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
   const [inicio, setInicio] = useState(format(ahora, "yyyy-MM-dd'T'HH:mm"));
   const [fin, setFin] = useState(format(new Date(ahora.getTime() + 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm"));
   const [estado, setEstado] = useState<"ocupado" | "disponible">("ocupado");
+  const [ubicacion, setUbicacion] = useState("");
+  const [notas, setNotas] = useState("");
+  const [alguienIraConmigo, setAlguienIraConmigo] = useState("");
+  const [recordatorio, setRecordatorio] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function guardar() {
     startTransition(async () => {
       try {
-        await crearBloqueAgendaPersonal({ titulo, fechaInicio: new Date(inicio).toISOString(), fechaFin: new Date(fin).toISOString(), estado });
+        await crearBloqueAgendaPersonal({
+          titulo,
+          fechaInicio: new Date(inicio).toISOString(),
+          fechaFin: new Date(fin).toISOString(),
+          estado,
+          ubicacion,
+          notas,
+          alguienIraConmigo: alguienIraConmigo,
+          recordatorio,
+        });
         onGuardado();
       } catch (e: any) { setError(e.message || "No se pudo guardar el bloque."); }
     });
@@ -117,11 +134,19 @@ function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onCerrar}>
-      <div className="card w-full max-w-lg p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-2xl p-5 space-y-3 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between"><h2 className="font-display font-semibold text-lg">Añadir a mi agenda</h2><button onClick={onCerrar} className="text-gray-500 text-xl">✕</button></div>
         <div><label className="label-field">Título</label><input value={titulo} onChange={(e) => setTitulo(e.target.value)} className="input-field" placeholder="Ej. Grabación, comida, libre" /></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label-field">Inicia</label><input type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} className="input-field" /></div><div><label className="label-field">Termina</label><input type="datetime-local" value={fin} onChange={(e) => setFin(e.target.value)} className="input-field" /></div></div>
         <div><label className="label-field">Estado</label><select value={estado} onChange={(e) => setEstado(e.target.value as "ocupado" | "disponible")} className="input-field"><option value="ocupado">Ocupado</option><option value="disponible">Disponible</option></select></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label className="label-field">Ubicación</label><input value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} className="input-field" placeholder="Ej. Studio, oficina, etc." /></div>
+          <div><label className="label-field">Alguien irá conmigo</label><input value={alguienIraConmigo} onChange={(e) => setAlguienIraConmigo(e.target.value)} className="input-field" placeholder="Nombre o equipo" /></div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label className="label-field">Recordatorio</label><input value={recordatorio} onChange={(e) => setRecordatorio(e.target.value)} className="input-field" placeholder="Ej. Revisar brief, llevar equipo" /></div>
+          <div><label className="label-field">Notas</label><textarea value={notas} onChange={(e) => setNotas(e.target.value)} className="input-field" rows={3} placeholder="Detalles extra..." /></div>
+        </div>
         {error && <p className="text-sm text-signal-urgent">{error}</p>}
         <div className="flex gap-2 pt-2"><button onClick={onCerrar} className="btn-secondary flex-1">Cancelar</button><button onClick={guardar} disabled={pending} className="btn-primary flex-1">{pending ? "Guardando..." : "Guardar bloque"}</button></div>
       </div>

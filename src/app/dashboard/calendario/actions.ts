@@ -35,6 +35,10 @@ interface AgendaPersonalInput {
   fechaInicio: string;
   fechaFin: string;
   estado: "ocupado" | "disponible";
+  notas?: string | null;
+  ubicacion?: string | null;
+  alguienIraConmigo?: string | null;
+  recordatorio?: string | null;
 }
 
 export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
@@ -52,6 +56,10 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     fecha_inicio: input.fechaInicio,
     fecha_fin: input.fechaFin,
     estado: input.estado,
+    notas: input.notas?.trim() || null,
+    ubicacion: input.ubicacion?.trim() || null,
+    alguien_ira_conmigo: input.alguienIraConmigo?.trim() || null,
+    recordatorio: input.recordatorio?.trim() || null,
   }).select().single();
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/calendario");
