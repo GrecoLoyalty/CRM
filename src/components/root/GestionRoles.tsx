@@ -134,8 +134,8 @@ function FilaPerfil({
 
   async function eliminar() {
     const mensaje = perfil.activo
-      ? `¿Eliminar por completo la cuenta de "${perfil.nombre_completo}"? Esta acción no se puede deshacer.`
-      : `¿Rechazar la solicitud de "${perfil.nombre_completo}"? Se eliminará su cuenta.`;
+      ? `¿Dar de baja al usuario "${perfil.nombre_completo}" del CRM? Se conservará el historial y su acceso será bloqueado.`
+      : `¿Rechazar la solicitud de "${perfil.nombre_completo}"? Se mantendrá el historial y se bloqueará el acceso.`;
     if (!window.confirm(mensaje)) return;
 
     setEliminando(true);
@@ -216,7 +216,7 @@ function FilaPerfil({
           <span className="text-xs text-gray-600">Tu cuenta</span>
         ) : (
           <button onClick={eliminar} disabled={eliminando} className="text-signal-urgent text-xs whitespace-nowrap hover:underline">
-            {eliminando ? "Eliminando..." : perfil.activo ? "Eliminar" : "Rechazar"}
+            {eliminando ? "Dando de baja..." : perfil.activo ? "Dar de baja" : "Rechazar"}
           </button>
         )}
       </td>

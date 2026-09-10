@@ -83,10 +83,9 @@ export async function alternarActivo(perfilId: string, activo: boolean) {
   revalidatePath("/dashboard/root");
 }
 
-// Elimina una cuenta por completo: borra el usuario de Supabase Auth
-// (lo que en cascada borra su fila en `perfiles` gracias al FK con
-// ON DELETE CASCADE). Sirve tanto para rechazar solicitudes pendientes
-// como para dar de baja a un usuario ya activo.
+// Baja lógica del perfil: se desactiva el acceso al CRM y se conserva el
+// historial en los registros de auditoría/tickets/tareas/eventos, sin
+// borrar la cuenta de Auth ni la fila de `perfiles`.
 //
 // IMPORTANTE: esta función regresa { error } en vez de hacer `throw`.
 // Next.js oculta en producción el mensaje real de cualquier error que
@@ -104,21 +103,17 @@ export async function eliminarUsuario(perfilId: string): Promise<{ error: string
     if (!user) return { error: "No autenticado" };
 
     if (perfilId === user.id) {
-      return { error: "No puedes eliminar tu propia cuenta." };
+      return { error: "No puedes darte de baja a ti mismo." };
     }
 
     const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
     if (miPerfil?.role !== "root") {
-      return { error: "Solo Root puede eliminar usuarios." };
+      return { error: "Solo Root puede dar de baja usuarios." };
     }
 
-    const service = createServiceClient();
-    const { error, data } = await service.auth.admin.deleteUser(perfilId);
-    console.log("[root] eliminarUsuario resultado:", { perfilId, error, data });
+    // Suprimir el acceso del CRM sin borrar el historial del usuario.
+    const { error } = await supabase.from("perfiles").update({ activo: false }).eq("id", perfilId);
     if (error) {
-      // error.message a veces no es enumerable (por eso se veía "{}" en el
-      // alert del cliente al viajar por la Server Action) — forzamos a
-      // texto plano explícitamente.
       const msg = typeof error.message === "string" && error.message ? error.message : `Error de Supabase (status ${(error as any).status ?? "desconocido"})`;
       return { error: msg };
     }
@@ -126,7 +121,7 @@ export async function eliminarUsuario(perfilId: string): Promise<{ error: string
     revalidatePath("/dashboard/root");
     return { error: null };
   } catch (err: any) {
-    const msg = typeof err?.message === "string" && err.message ? err.message : "No se pudo eliminar. Revisa los logs del servidor en Vercel para más detalle.";
+    const msg = typeof err?.message === "string" && err.message ? err.message : "No se pudo dar de baja. Revisa los logs del servidor en Vercel para más detalle.";
     console.error("[root] eliminarUsuario falló:", err);
     return { error: msg };
   }
