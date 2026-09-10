@@ -155,14 +155,14 @@ function FilaPerfil({
       <td className="py-2 pr-4">{perfil.nombre_completo}</td>
       {!perfil.activo && <td className="py-2 pr-4 text-xs text-gray-500 max-w-[180px] truncate">{perfil.nota_solicitud || "—"}</td>}
       <td className="py-2 pr-4">
-        <select value={role} onChange={(e) => guardar(e.target.value, depto, subrol)} className="input-field py-1">
+        <select id={`role-${perfil.id}`} name={`role-${perfil.id}`} value={role} onChange={(e) => guardar(e.target.value, depto, subrol)} className="input-field py-1">
           {ROLES.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
       </td>
       <td className="py-2 pr-4">
-        <select value={depto} onChange={(e) => guardar(role, e.target.value, subrol)} className="input-field py-1">
+        <select id={`depto-${perfil.id}`} name={`depto-${perfil.id}`} value={depto} onChange={(e) => guardar(role, e.target.value, subrol)} className="input-field py-1">
           <option value="">—</option>
           {DEPTOS.map((d) => (
             <option key={d} value={d}>{d}</option>
@@ -172,8 +172,10 @@ function FilaPerfil({
       <td className="py-2 pr-4">
         <div className="flex flex-wrap gap-2 max-w-[220px]">
           {DEPTOS.filter((d) => d !== depto).map((d) => (
-            <label key={d} className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
+            <label key={d} htmlFor={`depto-extra-${perfil.id}-${d}`} className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
               <input
+                id={`depto-extra-${perfil.id}-${d}`}
+                name={`depto-extra-${perfil.id}-${d}`}
                 type="checkbox"
                 checked={deptosExtra.includes(d)}
                 disabled={guardandoDeptos}
@@ -185,7 +187,7 @@ function FilaPerfil({
         </div>
       </td>
       <td className="py-2 pr-4">
-        <select value={subrol} onChange={(e) => guardar(role, depto, e.target.value)} className="input-field py-1">
+        <select id={`subrol-${perfil.id}`} name={`subrol-${perfil.id}`} value={subrol} onChange={(e) => guardar(role, depto, e.target.value)} className="input-field py-1">
           <option value="">—</option>
           {SUBROLES.map((s) => (
             <option key={s} value={s}>{s}</option>
