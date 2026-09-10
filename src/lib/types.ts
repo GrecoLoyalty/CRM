@@ -62,6 +62,8 @@ export interface EventoInvitado {
 
 export type EstadoAgendaPersonal = "ocupado" | "disponible";
 
+export type EstadoBloqueAgenda = "pendiente" | "listo";
+
 export interface AgendaPersonal {
   id: string;
   perfil_id: string;
@@ -69,6 +71,7 @@ export interface AgendaPersonal {
   fecha_inicio: string;
   fecha_fin: string;
   estado: EstadoAgendaPersonal;
+  estado_bloque?: EstadoBloqueAgenda | null;
   notas?: string | null;
   ubicacion?: string | null;
   alguien_ira_conmigo?: string | null;

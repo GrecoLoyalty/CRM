@@ -35,6 +35,7 @@ interface AgendaPersonalInput {
   fechaInicio: string;
   fechaFin: string;
   estado: "ocupado" | "disponible";
+  estadoBloque?: "pendiente" | "listo";
   notas?: string | null;
   ubicacion?: string | null;
   alguienIraConmigo?: string | null;
@@ -56,11 +57,46 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     fecha_inicio: input.fechaInicio,
     fecha_fin: input.fechaFin,
     estado: input.estado,
+    estado_bloque: input.estadoBloque || "pendiente",
     notas: input.notas?.trim() || null,
     ubicacion: input.ubicacion?.trim() || null,
     alguien_ira_conmigo: input.alguienIraConmigo?.trim() || null,
     recordatorio: input.recordatorio?.trim() || null,
   }).select().single();
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/calendario");
+  return data;
+}
+
+export async function editarBloqueAgendaPersonal(id: string, input: AgendaPersonalInput) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const payload: Record<string, any> = {
+    titulo: input.titulo.trim(),
+    fecha_inicio: input.fechaInicio,
+    fecha_fin: input.fechaFin,
+    estado: input.estado,
+    estado_bloque: input.estadoBloque || "pendiente",
+    notas: input.notas?.trim() || null,
+    ubicacion: input.ubicacion?.trim() || null,
+    alguien_ira_conmigo: input.alguienIraConmigo?.trim() || null,
+    recordatorio: input.recordatorio?.trim() || null,
+  };
+
+  const { data, error } = await supabase.from("agenda_personal").update(payload).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/calendario");
+  return data;
+}
+
+export async function cambiarEstadoBloqueAgendaPersonal(id: string, estadoBloque: "pendiente" | "listo") {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { data, error } = await supabase.from("agenda_personal").update({ estado_bloque: estadoBloque }).eq("id", id).select().single();
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/calendario");
   return data;

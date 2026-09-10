@@ -6,7 +6,8 @@ alter table agenda_personal
   add column if not exists notas text,
   add column if not exists ubicacion text,
   add column if not exists alguien_ira_conmigo text,
-  add column if not exists recordatorio text;
+  add column if not exists recordatorio text,
+  add column if not exists estado_bloque text not null default 'pendiente' check (estado_bloque in ('pendiente', 'listo'));
 
 create index if not exists idx_agenda_personal_rango on agenda_personal(fecha_inicio, fecha_fin);
 create index if not exists idx_agenda_personal_perfil on agenda_personal(perfil_id);
