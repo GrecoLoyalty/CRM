@@ -10,6 +10,15 @@ import { calcularVistaAguila } from "@/lib/vistaAguila";
 
 export default async function CeoPage() {
   const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const [{ data: perfil }, { data: deptosAdicionales }] = await Promise.all([
+    supabase.from("perfiles").select("role, depto").eq("id", user!.id).single(),
+    supabase.from("perfiles_departamentos").select("depto").eq("perfil_id", user!.id),
+  ]);
+  const esDireccion = perfil?.role === "root" || perfil?.role === "ceo";
+  const departamentosUsuario = [...new Set([perfil?.depto, ...(deptosAdicionales || []).map((fila) => fila.depto)].filter(Boolean) as string[])];
 
   // OJO: esta es la MISMA consulta y el MISMO cálculo (calcularVistaAguila)
   // que usa /dashboard/vista-aguila para todos los demás roles. Antes había
@@ -61,13 +70,13 @@ export default async function CeoPage() {
 
       <EstadisticasEquipo datos={estadisticas} />
 
-      <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} />
+      <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} departamentosUsuario={departamentosUsuario} />
 
-      <BannerCaja movimientosRecientes={movimientosRecientes || []} />
+      <BannerCaja movimientosRecientes={movimientosRecientes || []} soloLectura={!esDireccion} />
 
-      <GestionPortalCliente clientes={clientesActivos || []} />
+      {esDireccion && <GestionPortalCliente clientes={clientesActivos || []} />}
 
-      <PublicarBanner />
+      {esDireccion && <PublicarBanner />}
     </div>
   );
 }

@@ -16,7 +16,7 @@ const CATEGORIA_LABEL: Record<string, string> = {
 const formatoMoneda = (v: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(v);
 
-export default function BannerCaja({ movimientosRecientes }: { movimientosRecientes: MovimientoCaja[] }) {
+export default function BannerCaja({ movimientosRecientes, soloLectura = false }: { movimientosRecientes: MovimientoCaja[]; soloLectura?: boolean }) {
   const [tipo, setTipo] = useState<TipoMovimientoCaja>("ingreso");
   const [categoria, setCategoria] = useState("venta");
   const [concepto, setConcepto] = useState("");
@@ -62,12 +62,15 @@ export default function BannerCaja({ movimientosRecientes }: { movimientosRecien
 
   return (
     <div className="card p-5">
-      <h2 className="font-display font-semibold mb-1">Registrar ingreso / egreso</h2>
-      <p className="text-sm text-gray-500 mb-4">
-        Cada movimiento que captures aquí alimenta la gráfica de Ventas (si es un ingreso de categoría &quot;Venta&quot;)
-        y la de Flujo de caja.
-      </p>
+      <h2 className="font-display font-semibold mb-1">{soloLectura ? "Movimientos recientes" : "Registrar ingreso / egreso"}</h2>
+      {!soloLectura && (
+        <p className="text-sm text-gray-500 mb-4">
+          Cada movimiento que captures aquí alimenta la gráfica de Ventas (si es un ingreso de categoría &quot;Venta&quot;)
+          y la de Flujo de caja.
+        </p>
+      )}
 
+      {!soloLectura && <>
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => onCambiarTipo("ingreso")}
@@ -133,10 +136,11 @@ export default function BannerCaja({ movimientosRecientes }: { movimientosRecien
 
       {error && <p className="text-sm text-signal-urgent mt-3">{error}</p>}
       {ok && <p className="text-sm text-accent-soft mt-3">Movimiento registrado ✓</p>}
+      </>}
 
       {movimientosRecientes.length > 0 && (
-        <div className="mt-5 border-t border-base-600 pt-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Últimos movimientos</p>
+        <div className={`${soloLectura ? "mt-3" : "mt-5 border-t border-base-600 pt-4"}`}>
+          {!soloLectura && <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Últimos movimientos</p>}
           <div className="space-y-1.5 max-h-56 overflow-y-auto">
             {movimientosRecientes.map((m) => (
               <div key={m.id} className="flex items-center justify-between text-sm bg-base-900 border border-base-600 rounded-lg px-3 py-2">
@@ -151,9 +155,9 @@ export default function BannerCaja({ movimientosRecientes }: { movimientosRecien
                     {m.tipo === "ingreso" ? "+" : "−"}
                     {formatoMoneda(m.monto)}
                   </span>
-                  <button onClick={() => eliminar(m.id)} className="text-gray-600 hover:text-signal-urgent" aria-label="Eliminar">
+                  {!soloLectura && <button onClick={() => eliminar(m.id)} className="text-gray-600 hover:text-signal-urgent" aria-label="Eliminar">
                     ✕
-                  </button>
+                  </button>}
                 </div>
               </div>
             ))}

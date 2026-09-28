@@ -22,12 +22,15 @@ const DIRECCION: Item[] = [
   { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "boveda" },
 ];
 
+const VISTA_EJECUTIVA: Item = { href: "/dashboard/ceo", label: "Vista de Águila", icon: "aguila" };
+
 export const NAV_POR_ROL: Record<string, Grupo[]> = {
   root: [
     {
       items: [
         { href: "/dashboard/root", label: "Panel Root", icon: "escudo" },
         { href: "/dashboard/root/clientes", label: "Clientes", icon: "clientes" },
+        { href: "/dashboard/root/empresa", label: "Empresa y reportes", icon: "aguila" },
       ],
     },
     { titulo: "Día a día", items: DIA_A_DIA },
@@ -43,7 +46,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
     {
       items: [
         { href: "/dashboard/analisis", label: "Análisis", icon: "analisis" },
-        { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "aguila" },
+        VISTA_EJECUTIVA,
       ],
     },
     { titulo: "Día a día", items: DIA_A_DIA },
@@ -52,7 +55,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
     {
       items: [
         { href: "/dashboard/ventas", label: "Ventas", icon: "ventas" },
-        { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "aguila" },
+        VISTA_EJECUTIVA,
       ],
     },
     { titulo: "Día a día", items: DIA_A_DIA },
@@ -62,7 +65,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
       items: [
         { href: "/dashboard/estetica", label: "Estética Visual", icon: "estetica" },
         { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "desarrollo" },
-        { href: "/dashboard/vista-aguila", label: "Vista de Águila", icon: "aguila" },
+        VISTA_EJECUTIVA,
       ],
     },
     { titulo: "Día a día", items: DIA_A_DIA },

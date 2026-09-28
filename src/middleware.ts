@@ -67,7 +67,8 @@ export async function middleware(request: NextRequest) {
     const seccion = path.split("/")[2]; // /dashboard/<seccion>
     if (seccion && perfil) {
       const permitido = RUTA_POR_ROL[perfil.role] || [];
-      if (!permitido.includes(seccion)) {
+      const esPanelEjecutivoCompartido = path === "/dashboard/ceo";
+      if (!permitido.includes(seccion) && !esPanelEjecutivoCompartido) {
         return NextResponse.redirect(new URL("/dashboard", request.url));
       }
     }

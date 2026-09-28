@@ -11,8 +11,12 @@ export default async function VistaAguilaPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user!.id).single();
+  const [{ data: miPerfil }, { data: deptosAdicionales }] = await Promise.all([
+    supabase.from("perfiles").select("role, depto").eq("id", user!.id).single(),
+    supabase.from("perfiles_departamentos").select("depto").eq("perfil_id", user!.id),
+  ]);
   const esCeoORoot = miPerfil?.role === "root" || miPerfil?.role === "ceo";
+  const departamentosUsuario = [...new Set([miPerfil?.depto, ...(deptosAdicionales || []).map((fila) => fila.depto)].filter(Boolean) as string[])];
   const estadisticas = await obtenerEstadisticasEquipo(supabase);
 
   // Una sola consulta contra `clientes` — la RLS ya se encarga de que cada
@@ -42,7 +46,7 @@ export default async function VistaAguilaPage() {
 
       <EstadisticasEquipo datos={estadisticas} />
 
-      <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} />
+      <VistaAguila conteoPorDepto={conteoPorDepto} cuellosBotella={cuellosBotella} clientesPorDepto={clientesPorDepto} departamentosUsuario={departamentosUsuario} />
     </div>
   );
 }

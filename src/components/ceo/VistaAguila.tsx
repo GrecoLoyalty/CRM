@@ -14,6 +14,7 @@ interface Props {
   conteoPorDepto: Record<string, number>;
   cuellosBotella: Record<string, number>;
   clientesPorDepto: Record<string, ClienteResumen[]>;
+  departamentosUsuario?: string[];
 }
 
 const NODOS = [
@@ -29,7 +30,7 @@ const ENLACES = [
   ["analisis", "desarrollo"],
 ];
 
-export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPorDepto }: Props) {
+export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPorDepto, departamentosUsuario = [] }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [deptoSeleccionado, setDeptoSeleccionado] = useState<string | null>(null);
 
@@ -86,6 +87,15 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPo
       .on("click", (_event, d) => setDeptoSeleccionado((actual) => (actual === d.id ? null : d.id)));
 
     nodo
+      .filter((d) => departamentosUsuario.includes(d.id))
+      .append("circle")
+      .attr("r", 50)
+      .attr("fill", "none")
+      .attr("stroke", "#FBBF24")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "4 3");
+
+    nodo
       .append("circle")
       .attr("r", 42)
       .attr("fill", "#12161F")
@@ -132,7 +142,7 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPo
       .attr("font-size", 10)
       .style("pointer-events", "none")
       .text((d) => `⚠ ${cuellosBotella[d.id]} vencida(s)`);
-  }, [conteoPorDepto, cuellosBotella]);
+  }, [conteoPorDepto, cuellosBotella, departamentosUsuario]);
 
   const nodoActivo = NODOS.find((n) => n.id === deptoSeleccionado);
   const listaActiva = deptoSeleccionado ? clientesPorDepto[deptoSeleccionado] || [] : [];
@@ -140,6 +150,12 @@ export default function VistaAguila({ conteoPorDepto, cuellosBotella, clientesPo
   return (
     <div className="card p-4 sm:p-6">
       <svg ref={svgRef} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid meet" className="w-full h-[260px] sm:h-[380px]" />
+      {departamentosUsuario.length > 0 && (
+        <p className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+          <span aria-hidden="true" className="inline-block h-3 w-3 rounded-full border-2 border-dashed border-amber-400" />
+          Tu departamento
+        </p>
+      )}
 
       {deptoSeleccionado && (
         <div className="mt-4 border-t border-base-600 pt-4">

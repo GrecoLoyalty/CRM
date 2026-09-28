@@ -27,6 +27,50 @@ export async function definirMetas(formData: FormData) {
   revalidatePath("/dashboard/root");
 }
 
+export async function guardarConfiguracionEmpresa(formData: FormData) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { data: perfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (perfil?.role !== "root") throw new Error("Solo Root puede editar la información de la empresa.");
+
+  const numero = (campo: string) => Number(formData.get(campo));
+  const costosFijos = numero("costos_fijos_mensuales");
+  const costosVariablesPct = numero("costos_variables_pct");
+  const tasaImpuestosPct = numero("tasa_impuestos_pct");
+  if (!Number.isFinite(costosFijos) || costosFijos < 0) throw new Error("Los costos fijos deben ser cero o mayores.");
+  if (!Number.isFinite(costosVariablesPct) || costosVariablesPct < 0 || costosVariablesPct >= 100) {
+    throw new Error("El porcentaje de costos variables debe estar entre 0 y 99.99.");
+  }
+  if (!Number.isFinite(tasaImpuestosPct) || tasaImpuestosPct < 0 || tasaImpuestosPct > 100) {
+    throw new Error("La tasa fiscal debe estar entre 0 y 100.");
+  }
+
+  const nombre = String(formData.get("nombre_empresa") || "").trim();
+  if (!nombre) throw new Error("El nombre de la empresa es obligatorio.");
+
+  const { error } = await supabase.from("empresa_configuracion").upsert({
+    id: "principal",
+    nombre_empresa: nombre,
+    giro: String(formData.get("giro") || "").trim(),
+    telefono: String(formData.get("telefono") || "").trim(),
+    correo: String(formData.get("correo") || "").trim(),
+    sitio_web: String(formData.get("sitio_web") || "").trim(),
+    direccion: String(formData.get("direccion") || "").trim(),
+    moneda: String(formData.get("moneda") || "MXN"),
+    costos_fijos_mensuales: costosFijos,
+    costos_variables_pct: costosVariablesPct,
+    tasa_impuestos_pct: tasaImpuestosPct,
+    updated_by: user.id,
+  }, { onConflict: "id" });
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/dashboard/root/empresa");
+}
+
 export async function actualizarRol(perfilId: string, role: string, depto: string | null, subrol: string | null) {
   const supabase = createClient();
   const { error } = await supabase

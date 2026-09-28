@@ -4,9 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 const DESTINO_POR_ROL: Record<string, string> = {
   root: "/dashboard/root",
   ceo: "/dashboard/ceo",
-  analista: "/dashboard/analisis",
-  vendedor: "/dashboard/ventas",
-  produccion: "/dashboard/estetica",
+  analista: "/dashboard/ceo",
+  vendedor: "/dashboard/ceo",
+  produccion: "/dashboard/ceo",
 };
 
 export default async function DashboardIndex() {
@@ -17,10 +17,6 @@ export default async function DashboardIndex() {
   if (!user) redirect("/login");
 
   const { data: perfil } = await supabase.from("perfiles").select("role, depto").eq("id", user.id).single();
-
-  if (perfil?.role === "produccion" && perfil.depto) {
-    redirect(`/dashboard/${perfil.depto}`);
-  }
 
   redirect(DESTINO_POR_ROL[perfil?.role || "vendedor"]);
 }
