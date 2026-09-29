@@ -48,6 +48,7 @@ export interface EventoCalendario {
   todo_el_dia: boolean;
   ubicacion: string | null;
   cliente_id: string | null;
+  visible_portal: boolean;
   creado_por: string;
   link_publico_token: string;
   created_at: string;

@@ -27,6 +27,7 @@ interface EventoInput {
   todoElDia?: boolean;
   ubicacion?: string;
   clienteId?: string | null;
+  visiblePortal?: boolean;
   invitados: string[]; // ids de perfiles (sin contar al creador)
 }
 
@@ -183,6 +184,7 @@ export async function crearEvento(input: EventoInput) {
       todo_el_dia: !!input.todoElDia,
       ubicacion: input.ubicacion?.trim() || null,
       cliente_id: input.clienteId || null,
+      visible_portal: !!input.clienteId && !!input.visiblePortal,
       creado_por: user.id,
     })
     .select()
@@ -257,6 +259,7 @@ export async function actualizarEvento(eventoId: string, input: EventoInput) {
       todo_el_dia: !!input.todoElDia,
       ubicacion: input.ubicacion?.trim() || null,
       cliente_id: input.clienteId || null,
+      visible_portal: !!input.clienteId && !!input.visiblePortal,
     })
     .eq("id", eventoId)
     .select()

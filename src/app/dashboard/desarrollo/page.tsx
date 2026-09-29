@@ -38,6 +38,13 @@ export default async function DesarrolloPage() {
   const { data: tareas } = await query;
 
   const { data: apps } = await supabase.from("suite_apps").select("*").order("veces_reutilizada", { ascending: false });
+  const tareasActivas = tareas || [];
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const tareasVencidas = tareasActivas.filter((t) => t.fecha_pactada_entrega && new Date(`${t.fecha_pactada_entrega}T00:00:00`) < hoy).length;
+  const progresoPromedio = tareasActivas.length
+    ? Math.round(tareasActivas.reduce((total, tarea) => total + (tarea.progreso_pct || 0), 0) / tareasActivas.length)
+    : 0;
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
@@ -48,6 +55,20 @@ export default async function DesarrolloPage() {
 
       <section className="space-y-3">
         <h2 className="font-display font-semibold text-sm text-gray-400 uppercase tracking-wide">Tus tareas</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="border-l-2 border-accent pl-3 py-1">
+            <p className="text-2xl font-display font-semibold tabular-nums">{tareasActivas.length}</p>
+            <p className="text-xs text-gray-500">Tareas abiertas</p>
+          </div>
+          <div className="border-l-2 border-signal-info pl-3 py-1">
+            <p className="text-2xl font-display font-semibold tabular-nums">{progresoPromedio}%</p>
+            <p className="text-xs text-gray-500">Progreso promedio</p>
+          </div>
+          <div className={`border-l-2 pl-3 py-1 ${tareasVencidas ? "border-signal-urgent" : "border-base-500"}`}>
+            <p className={`text-2xl font-display font-semibold tabular-nums ${tareasVencidas ? "text-signal-urgent" : ""}`}>{tareasVencidas}</p>
+            <p className="text-xs text-gray-500">Tareas vencidas</p>
+          </div>
+        </div>
         {(!tareas || tareas.length === 0) && (
           <div className="card p-8 text-center text-gray-500">No tienes tareas activas por el momento.</div>
         )}

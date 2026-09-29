@@ -81,6 +81,15 @@ export default async function PortalClientePage({ params }: { params: { token: s
     .eq("visible_portal", true)
     .order("created_at", { ascending: false });
 
+  const { data: eventosPortal } = await supabase
+    .from("eventos_calendario")
+    .select("id, titulo, descripcion, fecha_inicio, fecha_fin, todo_el_dia, ubicacion")
+    .eq("cliente_id", cliente.id)
+    .eq("visible_portal", true)
+    .gte("fecha_fin", new Date().toISOString())
+    .order("fecha_inicio", { ascending: true })
+    .limit(6);
+
   const materiales = await Promise.all(
     (materialesRaw || []).map(async (m) => {
       let url = m.link_url;
@@ -102,10 +111,13 @@ export default async function PortalClientePage({ params }: { params: { token: s
 
   const indiceActual = ETAPAS_ORDEN.indexOf(cliente.estado);
   const historialPorEtapa = Object.fromEntries((historial || []).map((h) => [h.estado, h]));
+  const etapasCompletadas = indiceActual < 0 ? 0 : indiceActual + 1;
+  const porcentajeAvance = Math.round((etapasCompletadas / ETAPAS_ORDEN.length) * 100);
+  const ultimoAvancePublico = [...(historial || [])].reverse().find((h) => h.comentario_publico?.trim());
 
   return (
     <main className="min-h-screen bg-base-900 text-gray-100 px-6 py-12">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-2 mb-8">
           <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center font-display font-bold text-base-900">G</div>
           <span className="font-display text-lg tracking-tight">GRESANOVA</span>
@@ -122,12 +134,38 @@ export default async function PortalClientePage({ params }: { params: { token: s
           </div>
         )}
 
-        <div className="card p-6 mb-8">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Estatus de tu proyecto</p>
-          <h1 className="text-2xl font-display font-semibold mt-1">{cliente.nombre_empresa}</h1>
-          <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full ${ESTADO_COLOR[cliente.estado as keyof typeof ESTADO_COLOR]}`}>
-            {ETAPA_LABEL[cliente.estado] || cliente.estado}
-          </span>
+        <div className="card p-6 sm:p-8 mb-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Seguimiento de proyecto</p>
+              <h1 className="text-2xl font-display font-semibold mt-1">{cliente.nombre_empresa}</h1>
+              <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full ${ESTADO_COLOR[cliente.estado as keyof typeof ESTADO_COLOR]}`}>
+                {ETAPA_LABEL[cliente.estado] || cliente.estado}
+              </span>
+            </div>
+            <div className="min-w-32 text-right">
+              <p className="text-3xl font-display font-semibold tabular-nums">{porcentajeAvance}%</p>
+              <p className="text-xs text-gray-500">{etapasCompletadas} de {ETAPAS_ORDEN.length} etapas</p>
+            </div>
+          </div>
+          <div
+            className="mt-6 h-2 rounded-full bg-base-600 overflow-hidden"
+            role="progressbar"
+            aria-label="Avance del proyecto"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={porcentajeAvance}
+          >
+            <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${porcentajeAvance}%` }} />
+          </div>
+          {ultimoAvancePublico && (
+            <div className="mt-5 border-l-2 border-accent/70 pl-3">
+              <p className="text-xs text-gray-500">
+                Último avance · {format(new Date(ultimoAvancePublico.created_at), "d 'de' MMMM, yyyy", { locale: es })}
+              </p>
+              <p className="text-sm text-gray-200 mt-1">{ultimoAvancePublico.comentario_publico}</p>
+            </div>
+          )}
           {cliente.mostrar_ficha_portal && (
             <a
               href={`/api/portal/${params.token}/pdf`}
@@ -162,6 +200,36 @@ export default async function PortalClientePage({ params }: { params: { token: s
             );
           })}
         </ol>
+
+        <section className="mt-10" aria-labelledby="eventos-portal-heading">
+          <div className="mb-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Agenda del proyecto</p>
+            <h2 id="eventos-portal-heading" className="text-lg font-display font-semibold mt-1">Próximas reuniones</h2>
+          </div>
+          {eventosPortal && eventosPortal.length > 0 ? (
+            <ul className="divide-y divide-base-600 border-y border-base-600">
+              {eventosPortal.map((evento) => (
+                <li key={evento.id} className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-5 py-4">
+                  <div className="sm:w-44 shrink-0">
+                    <p className="text-sm font-medium text-accent-soft">
+                      {format(new Date(evento.fecha_inicio), evento.todo_el_dia ? "d MMM yyyy" : "d MMM yyyy · HH:mm", { locale: es })}
+                    </p>
+                    {!evento.todo_el_dia && (
+                      <p className="text-xs text-gray-500 mt-0.5">Termina {format(new Date(evento.fecha_fin), "HH:mm")}</p>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-medium text-gray-100">{evento.titulo}</h3>
+                    {evento.descripcion && <p className="text-sm text-gray-400 mt-1">{evento.descripcion}</p>}
+                    {evento.ubicacion && <p className="text-xs text-gray-500 mt-2">{evento.ubicacion}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="border-y border-base-600 py-5 text-sm text-gray-500">No hay reuniones próximas compartidas.</p>
+          )}
+        </section>
 
         {equipoPorDepto.length > 0 && (
           <div className="card p-6 mt-8">

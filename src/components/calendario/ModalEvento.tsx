@@ -48,6 +48,7 @@ export default function ModalEvento({
   const [todoElDia, setTodoElDia] = useState(eventoExistente?.todo_el_dia || false);
   const [ubicacion, setUbicacion] = useState(eventoExistente?.ubicacion || "");
   const [clienteId, setClienteId] = useState(eventoExistente?.cliente_id || "");
+  const [visiblePortal, setVisiblePortal] = useState(eventoExistente?.visible_portal || false);
   const [invitadosSel, setInvitadosSel] = useState<string[]>(
     invitadosExistentes ? invitadosExistentes.map((i) => i.perfil_id).filter((id) => id !== userId) : []
   );
@@ -72,6 +73,7 @@ export default function ModalEvento({
           todoElDia,
           ubicacion,
           clienteId: clienteId || null,
+          visiblePortal,
           invitados: invitadosSel,
         };
         if (eventoExistente) {
@@ -132,7 +134,10 @@ export default function ModalEvento({
 
           <div>
             <label className="label-field">¿Relacionado a un cliente? (opcional)</label>
-            <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className="input-field">
+            <select value={clienteId} onChange={(e) => {
+              setClienteId(e.target.value);
+              if (!e.target.value) setVisiblePortal(false);
+            }} className="input-field">
               <option value="">— Ninguno —</option>
               {clientes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -141,6 +146,21 @@ export default function ModalEvento({
               ))}
             </select>
           </div>
+
+          {clienteId && (
+            <label className="flex items-start gap-3 rounded-lg border border-base-600 bg-base-900/60 p-3 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={visiblePortal}
+                onChange={(e) => setVisiblePortal(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Mostrar este evento en el portal del cliente
+                <span className="block text-xs text-gray-500 mt-0.5">El evento permanecerá privado para el cliente si no activas esta opción.</span>
+              </span>
+            </label>
+          )}
 
           <div>
             <label className="label-field">Invitar a</label>

@@ -30,6 +30,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
   const [cargando, setCargando] = useState(true);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [bloqueSeleccionado, setBloqueSeleccionado] = useState<AgendaPersonal | null>(null);
+  const [formato, setFormato] = useState<"mes" | "agenda">("mes");
 
   const diasVisibles = useMemo(() => eachDayOfInterval({
     start: startOfWeek(startOfMonth(mes), { weekStartsOn: 1 }),
@@ -68,7 +69,13 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
           <p className="text-xs uppercase tracking-wide text-gray-500">Mi calendario personal</p>
           <p className="text-sm text-gray-400">Marca cuándo estás ocupado o disponible para el equipo.</p>
         </div>
-        <button onClick={() => setModalAbierto(true)} className="btn-primary text-sm">+ Añadir bloque</button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-base-600 p-1 bg-base-900" role="group" aria-label="Formato de mi agenda">
+            <button onClick={() => setFormato("mes")} aria-pressed={formato === "mes"} className={`px-3 py-1.5 rounded-md text-sm ${formato === "mes" ? "bg-base-700 text-gray-100" : "text-gray-500 hover:text-gray-200"}`}>Mes</button>
+            <button onClick={() => setFormato("agenda")} aria-pressed={formato === "agenda"} className={`px-3 py-1.5 rounded-md text-sm ${formato === "agenda" ? "bg-base-700 text-gray-100" : "text-gray-500 hover:text-gray-200"}`}>Agenda</button>
+          </div>
+          <button onClick={() => setModalAbierto(true)} className="btn-primary text-sm">+ Añadir bloque</button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -77,7 +84,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
         <button onClick={() => setMes((actual) => addMonths(actual, 1))} className="btn-secondary px-3 py-1.5 text-sm">→</button>
       </div>
 
-      <div className="card p-4">
+      {formato === "mes" ? <div className="card p-4">
         <div className="grid grid-cols-7 gap-1 mb-2">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((dia) => <div key={dia} className="text-center text-xs text-gray-500 font-medium py-1">{dia}</div>)}</div>
         {cargando ? <p className="text-sm text-gray-500 py-6">Cargando agenda...</p> : <div className="grid grid-cols-7 gap-1">
           {diasVisibles.map((dia) => {
@@ -95,7 +102,31 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
             </div>;
           })}
         </div>}
-      </div>
+      </div> : (
+        <div className="border-y border-base-600">
+          {cargando ? (
+            <p className="py-8 text-center text-sm text-gray-500">Cargando agenda...</p>
+          ) : bloques.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500">No tienes bloques este mes.</p>
+          ) : (
+            [...bloques].sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime()).map((bloque) => (
+              <button
+                key={bloque.id}
+                onClick={() => setBloqueSeleccionado(bloque)}
+                className="flex w-full items-start gap-4 border-b border-base-700 px-2 py-4 text-left last:border-b-0 hover:bg-base-800/60 transition-colors"
+              >
+                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${bloque.estado === "disponible" ? "bg-green-400" : "bg-signal-urgent"}`} />
+                <span className="w-36 shrink-0 text-sm text-gray-400">{format(new Date(bloque.fecha_inicio), "EEE d MMM · HH:mm", { locale: es })}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-gray-100">{bloque.titulo}</span>
+                  <span className="mt-1 block text-xs text-gray-500">{bloque.estado === "disponible" ? "Disponible" : "Ocupado"} · {format(new Date(bloque.fecha_inicio), "HH:mm")}–{format(new Date(bloque.fecha_fin), "HH:mm")}</span>
+                </span>
+                {bloque.ubicacion && <span className="hidden sm:inline max-w-48 truncate text-xs text-gray-500">{bloque.ubicacion}</span>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
 
       {modalAbierto && <NuevoBloque onCerrar={() => setModalAbierto(false)} onGuardado={() => { setModalAbierto(false); cargar(); }} />}
       {bloqueSeleccionado && <DetalleBloqueAgenda bloque={bloqueSeleccionado} onCerrar={() => setBloqueSeleccionado(null)} onDeleted={() => { setBloqueSeleccionado(null); cargar(); }} onUpdated={() => { setBloqueSeleccionado(null); cargar(); }} />}

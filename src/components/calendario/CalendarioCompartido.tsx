@@ -52,6 +52,7 @@ export default function CalendarioCompartido({
   const [eventoSeleccionado, setEventoSeleccionado] = useState<EventoCalendario | null>(null);
   const [disponibilidades, setDisponibilidades] = useState<AgendaPersonalBloque[]>([]);
   const [vista, setVista] = useState<"general" | "disponibilidad">("general");
+  const [formatoGeneral, setFormatoGeneral] = useState<"mes" | "agenda">("mes");
 
   const perfilesPorId = useMemo(() => new Map(perfiles.map((p) => [p.id, p])), [perfiles]);
 
@@ -152,12 +153,26 @@ export default function CalendarioCompartido({
             Hoy
           </button>
         </div>
-        <button onClick={() => setModalCrearAbierto(true)} className="btn-primary text-sm">
-          + Nuevo evento
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-base-600 p-1 bg-base-900" role="group" aria-label="Formato del calendario">
+            <button
+              onClick={() => setFormatoGeneral("mes")}
+              aria-pressed={formatoGeneral === "mes"}
+              className={`px-3 py-1.5 rounded-md text-sm ${formatoGeneral === "mes" ? "bg-base-700 text-gray-100" : "text-gray-500 hover:text-gray-200"}`}
+            >Mes</button>
+            <button
+              onClick={() => setFormatoGeneral("agenda")}
+              aria-pressed={formatoGeneral === "agenda"}
+              className={`px-3 py-1.5 rounded-md text-sm ${formatoGeneral === "agenda" ? "bg-base-700 text-gray-100" : "text-gray-500 hover:text-gray-200"}`}
+            >Agenda</button>
+          </div>
+          <button onClick={() => setModalCrearAbierto(true)} className="btn-primary text-sm">
+            + Nuevo evento
+          </button>
+        </div>
       </div>
 
-      <div className="card p-3 sm:p-4">
+      {formatoGeneral === "mes" ? <div className="card p-3 sm:p-4">
         <div className="grid grid-cols-7 gap-1 mb-2">
           {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
             <div key={d} className="text-center text-xs text-gray-500 font-medium py-1">
@@ -211,7 +226,38 @@ export default function CalendarioCompartido({
           })}
         </div>
         {cargando && <p className="text-xs text-gray-600 mt-2">Actualizando…</p>}
-      </div>
+      </div> : (
+        <div className="border-y border-base-600">
+          {cargando ? (
+            <p className="py-8 text-center text-sm text-gray-500">Cargando agenda...</p>
+          ) : eventos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500">No hay eventos en este mes.</p>
+          ) : (
+            [...eventos].sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime()).map((evento) => {
+              const creador = perfilesPorId.get(evento.creado_por);
+              return (
+                <button
+                  key={evento.id}
+                  onClick={() => setEventoSeleccionado(evento)}
+                  className="flex w-full items-start gap-4 border-b border-base-700 px-2 py-4 text-left last:border-b-0 hover:bg-base-800/60 transition-colors"
+                >
+                  <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: creador?.color_calendario || "#3AA7A1" }} />
+                  <span className="w-36 shrink-0 text-sm text-gray-400">
+                    {evento.todo_el_dia
+                      ? format(new Date(evento.fecha_inicio), "EEE d MMM", { locale: es })
+                      : format(new Date(evento.fecha_inicio), "EEE d MMM · HH:mm", { locale: es })}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-gray-100">{evento.titulo}</span>
+                    {evento.descripcion && <span className="mt-1 block truncate text-xs text-gray-500">{evento.descripcion}</span>}
+                  </span>
+                  {evento.cliente_id && <span className="hidden sm:inline text-xs text-gray-500">{clientes.find((cliente) => cliente.id === evento.cliente_id)?.nombre_empresa}</span>}
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Leyenda de colores por persona */}
       <div className="flex flex-wrap gap-3">
