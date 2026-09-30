@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { enviarEmail } from "@/lib/email";
 import { crearEventoGoogle, actualizarEventoGoogle, eliminarEventoGoogle } from "@/lib/google/calendar";
+import { googleSharedCalendarConfig } from "@/lib/google/config";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -173,6 +174,26 @@ export async function crearEvento(input: EventoInput) {
   if (new Date(input.fechaFin) < new Date(input.fechaInicio)) throw new Error("La fecha de fin no puede ser antes que la de inicio.");
 
   const { data: miPerfil } = await supabase.from("perfiles").select("nombre_completo").eq("id", user.id).single();
+  const calendarioCompartido = googleSharedCalendarConfig();
+  const destinoGooglePerfilId = calendarioCompartido?.profileId || user.id;
+  const destinoGoogleCalendarId = calendarioCompartido?.calendarId || "primary";
+  const admin = createServiceClient();
+  const emailsInvitados = calendarioCompartido
+    ? []
+    : await obtenerEmailsDePerfiles(admin, input.invitados.filter((id) => id !== user.id));
+  const googleEventId = await crearEventoGoogle(destinoGooglePerfilId, {
+    titulo: input.titulo.trim(),
+    descripcion: input.descripcion?.trim() || null,
+    fechaInicio: input.fechaInicio,
+    fechaFin: input.fechaFin,
+    todoElDia: !!input.todoElDia,
+    ubicacion: input.ubicacion?.trim() || null,
+    invitadosEmails: emailsInvitados,
+    calendarId: destinoGoogleCalendarId,
+  });
+  if (calendarioCompartido && !googleEventId) {
+    throw new Error("No se pudo crear el evento en el calendario central de Google. El evento no se guardó en el CRM.");
+  }
 
   const { data: evento, error } = await supabase
     .from("eventos_calendario")
@@ -186,10 +207,16 @@ export async function crearEvento(input: EventoInput) {
       cliente_id: input.clienteId || null,
       visible_portal: !!input.clienteId && !!input.visiblePortal,
       creado_por: user.id,
+      google_event_id: googleEventId,
+      google_calendar_perfil_id: googleEventId ? destinoGooglePerfilId : null,
+      google_calendar_id: googleEventId ? destinoGoogleCalendarId : null,
     })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (googleEventId) await eliminarEventoGoogle(destinoGooglePerfilId, googleEventId, destinoGoogleCalendarId);
+    throw new Error(error.message);
+  }
 
   // El organizador queda invitado (y confirmado) automáticamente.
   const idsUnicos = [...new Set([user.id, ...input.invitados])];
@@ -212,27 +239,6 @@ export async function crearEvento(input: EventoInput) {
     ubicacion: evento.ubicacion,
     eventoId: evento.id,
   });
-
-  // Si el organizador conectó su cuenta de Google, el evento también se crea
-  // en su Google Calendar personal, con el resto de invitados como
-  // asistentes. Si no la conectó, esto simplemente no hace nada (best effort).
-  const admin = createServiceClient();
-  const emailsInvitados = await obtenerEmailsDePerfiles(admin, invitadosAAvisar);
-  const googleEventId = await crearEventoGoogle(user.id, {
-    titulo: evento.titulo,
-    descripcion: evento.descripcion,
-    fechaInicio: evento.fecha_inicio,
-    fechaFin: evento.fecha_fin,
-    todoElDia: evento.todo_el_dia,
-    ubicacion: evento.ubicacion,
-    invitadosEmails: emailsInvitados,
-  });
-  if (googleEventId) {
-    await supabase
-      .from("eventos_calendario")
-      .update({ google_event_id: googleEventId, google_calendar_perfil_id: user.id })
-      .eq("id", evento.id);
-  }
 
   revalidatePath("/dashboard/calendario");
   return evento;
@@ -302,8 +308,10 @@ export async function actualizarEvento(eventoId: string, input: EventoInput) {
   const admin = createServiceClient();
   if (evento.google_event_id && evento.google_calendar_perfil_id) {
     const idsInvitadosFinal = idsUnicos.filter((id) => id !== evento.creado_por);
-    const emailsInvitados = await obtenerEmailsDePerfiles(admin, idsInvitadosFinal);
-    await actualizarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id, {
+    const calendarId = evento.google_calendar_id || "primary";
+    const esCalendarioCentral = calendarId !== "primary";
+    const emailsInvitados = esCalendarioCentral ? [] : await obtenerEmailsDePerfiles(admin, idsInvitadosFinal);
+    const sincronizado = await actualizarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id, {
       titulo: evento.titulo,
       descripcion: evento.descripcion,
       fechaInicio: evento.fecha_inicio,
@@ -311,7 +319,11 @@ export async function actualizarEvento(eventoId: string, input: EventoInput) {
       todoElDia: evento.todo_el_dia,
       ubicacion: evento.ubicacion,
       invitadosEmails: emailsInvitados,
-    });
+      calendarId,
+    }, calendarId);
+    if (esCalendarioCentral && !sincronizado) {
+      throw new Error("El cambio quedó guardado en el CRM, pero Google Calendar no pudo actualizarlo. Intenta guardar de nuevo.");
+    }
   }
 
   revalidatePath("/dashboard/calendario");
@@ -325,15 +337,22 @@ export async function eliminarEvento(eventoId: string) {
   // la fila (para poder borrarlo también allá).
   const { data: evento } = await supabase
     .from("eventos_calendario")
-    .select("google_event_id, google_calendar_perfil_id")
+    .select("google_event_id, google_calendar_perfil_id, google_calendar_id")
     .eq("id", eventoId)
     .single();
+
+  const calendarId = evento?.google_calendar_id || "primary";
+  const esCalendarioCentral = calendarId !== "primary";
+  if (esCalendarioCentral && evento?.google_event_id && evento.google_calendar_perfil_id) {
+    const eliminadoGoogle = await eliminarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id, calendarId);
+    if (!eliminadoGoogle) throw new Error("No se pudo eliminar el evento del calendario central de Google; el evento sigue en el CRM.");
+  }
 
   const { error } = await supabase.from("eventos_calendario").delete().eq("id", eventoId);
   if (error) throw new Error(error.message);
 
-  if (evento?.google_event_id && evento?.google_calendar_perfil_id) {
-    await eliminarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id);
+  if (!esCalendarioCentral && evento?.google_event_id && evento?.google_calendar_perfil_id) {
+    await eliminarEventoGoogle(evento.google_calendar_perfil_id, evento.google_event_id, calendarId);
   }
 
   revalidatePath("/dashboard/calendario");

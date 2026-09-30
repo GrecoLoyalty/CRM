@@ -1,5 +1,5 @@
 // Sincroniza eventos de `eventos_calendario` (la agenda de equipo interna)
-// con el Google Calendar personal del organizador, si conectó su cuenta.
+// con el calendario de Google configurado para el CRM.
 // Todo es "best effort": si el organizador no conectó Google, o la llamada
 // falla, estas funciones regresan null/false en vez de tronar — el
 // calendario interno del CRM sigue siendo la fuente de verdad.
@@ -7,6 +7,7 @@
 import { obtenerAccessTokenValido } from "./tokens";
 
 interface EventoGoogleInput {
+  calendarId?: string;
   titulo: string;
   descripcion?: string | null;
   fechaInicio: string; // ISO
@@ -38,6 +39,10 @@ function cuerpoEvento(input: EventoGoogleInput) {
   return body;
 }
 
+function urlEventos(calendarId = "primary") {
+  return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+}
+
 // Crea el evento en el Google Calendar ("primary") del organizador.
 // Devuelve el id del evento de Google (para poder editarlo/borrarlo luego)
 // o null si el organizador no tiene Google conectado / la llamada falló.
@@ -47,7 +52,7 @@ export async function crearEventoGoogle(perfilId: string, input: EventoGoogleInp
 
   try {
     const res = await fetch(
-      "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all",
+      `${urlEventos(input.calendarId)}?sendUpdates=${input.invitadosEmails?.length ? "all" : "none"}`,
       {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -69,14 +74,15 @@ export async function crearEventoGoogle(perfilId: string, input: EventoGoogleInp
 export async function actualizarEventoGoogle(
   perfilId: string,
   googleEventId: string,
-  input: EventoGoogleInput
+  input: EventoGoogleInput,
+  calendarId = "primary"
 ): Promise<boolean> {
   const accessToken = await obtenerAccessTokenValido(perfilId);
   if (!accessToken) return false;
 
   try {
     const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}?sendUpdates=all`,
+      `${urlEventos(calendarId)}/${encodeURIComponent(googleEventId)}?sendUpdates=${input.invitadosEmails?.length ? "all" : "none"}`,
       {
         method: "PATCH",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -90,13 +96,13 @@ export async function actualizarEventoGoogle(
   }
 }
 
-export async function eliminarEventoGoogle(perfilId: string, googleEventId: string): Promise<boolean> {
+export async function eliminarEventoGoogle(perfilId: string, googleEventId: string, calendarId = "primary"): Promise<boolean> {
   const accessToken = await obtenerAccessTokenValido(perfilId);
   if (!accessToken) return false;
 
   try {
     const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}?sendUpdates=all`,
+      `${urlEventos(calendarId)}/${encodeURIComponent(googleEventId)}?sendUpdates=none`,
       { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
     );
     // 410 = Google ya lo tenía borrado (p.ej. el usuario lo borró a mano) — no es un error para nosotros.

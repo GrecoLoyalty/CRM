@@ -50,6 +50,7 @@ export interface EventoCalendario {
   cliente_id: string | null;
   visible_portal: boolean;
   creado_por: string;
+  google_calendar_id?: string | null;
   link_publico_token: string;
   created_at: string;
   updated_at: string;

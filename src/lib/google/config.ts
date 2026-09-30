@@ -1,8 +1,9 @@
 // Configuración central de la integración con Google (Gmail + Calendar).
 //
 // A diferencia del correo por Resend (una sola API key para todo el CRM),
-// aquí CADA USUARIO conecta su propia cuenta de Google vía OAuth2. Para
-// eso el CRM necesita un Client ID/Secret de un proyecto en Google Cloud
+// el CRM usa una cuenta Google autorizada vía OAuth2, que puede ser una
+// cuenta del equipo con acceso de edición al calendario central. Para eso
+// se necesita un Client ID/Secret de un proyecto en Google Cloud
 // Console — ver GOOGLE_SETUP.md en la raíz del proyecto para la guía
 // paso a paso de cómo generarlos.
 //
@@ -37,4 +38,16 @@ export function googleConfig() {
     // Reutiliza la misma clave de cifrado que ya usa la Bóveda de contraseñas.
     secret: process.env.VAULT_SECRET_KEY!,
   };
+}
+
+export function googleSharedCalendarConfig() {
+  const calendarId = process.env.GOOGLE_SHARED_CALENDAR_ID?.trim();
+  const profileId = process.env.GOOGLE_SHARED_CALENDAR_PROFILE_ID?.trim();
+
+  if (!calendarId && !profileId) return null;
+  if (!calendarId || !profileId) {
+    throw new Error("Configura GOOGLE_SHARED_CALENDAR_ID y GOOGLE_SHARED_CALENDAR_PROFILE_ID juntos.");
+  }
+
+  return { calendarId, profileId };
 }

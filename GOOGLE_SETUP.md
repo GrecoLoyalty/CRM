@@ -1,8 +1,9 @@
 # Conectar Gmail y Google Calendar al CRM
 
-Cada usuario del CRM conecta **su propia cuenta de Google** (OAuth2). El CRM
-nunca guarda una contraseña de Google — solo un token de acceso que Google
-emite y que se puede revocar en cualquier momento desde
+El CRM puede enviar todos los eventos a **un calendario central compartido**.
+Una cuenta Google autorizada por OAuth debe tener permiso para editar ese
+calendario. El CRM nunca guarda una contraseña de Google — solo tokens que Google
+emite y que se pueden revocar en cualquier momento desde
 https://myaccount.google.com/permissions.
 
 Para que el botón "Conectar con Google" funcione, tú (como dueño del
@@ -55,26 +56,56 @@ GOOGLE_REDIRECT_URI=http://localhost:3000/api/google/callback
 reutiliza para cifrar el refresh_token de Google — si ya la tienes
 configurada, no necesitas nada más.
 
-## 5. Aplicar la migración de base de datos
+## 5. Preparar el calendario central
+
+1. Crea el calendario compartido en Google Calendar.
+2. Invita manualmente al equipo desde la configuración del calendario y dales
+   el permiso que quieras para agregar o editar eventos directamente en Google.
+3. Comparte el calendario con la cuenta de Google que autorizará el CRM y dale
+   el permiso **Hacer cambios en los eventos**.
+4. En **Configuración del calendario → Integrar el calendario**, copia el ID.
+5. Conecta la cuenta autorizada desde **Integraciones** en el CRM. Obtén el ID
+   de su perfil en la tabla `perfiles` y configura estas variables en `.env.local`
+   y en el hosting:
+
+```
+GOOGLE_SHARED_CALENDAR_ID=xxxxxxxxxxxxxxxx@group.calendar.google.com
+GOOGLE_SHARED_CALENDAR_PROFILE_ID=uuid-del-perfil-autorizado
+```
+
+Reinicia o redepliega la aplicación después de configurar las variables. En este
+modo todos los eventos nuevos del CRM van a ese calendario central,
+independientemente de quién los cree. El CRM no envía invitaciones por evento:
+el acceso del equipo se administra manualmente en Google Calendar.
+
+## 6. Aplicar la migración de base de datos
 
 Corre `supabase/migrations/0023_integracion_google.sql` contra tu proyecto
 de Supabase (SQL Editor, o tu flujo normal de migraciones). Crea la tabla
 `perfiles_google` y dos columnas nuevas en `eventos_calendario`.
 
-## 6. Probarlo
+Aplica también `supabase/migrations/0030_eventos_visibles_portal.sql` y
+`supabase/migrations/0031_google_calendar_destino.sql`, en ese orden. La primera
+agrega la opción de compartir eventos con el portal del cliente; la segunda
+permite al CRM recordar en qué calendario de Google vive cada evento. Si hay
+migraciones anteriores pendientes, aplícalas primero en orden numérico.
+
+## 7. Probarlo
 
 1. Entra al CRM, ve a **Integraciones** (abajo del menú lateral).
 2. Click en **Conectar con Google** → inicia sesión → acepta los permisos.
 3. Deberías volver al CRM con un aviso de "conectado" y tu correo de Google visible.
-4. Crea un evento en el **Calendario** compartido: debería aparecer también
-   en tu Google Calendar personal, con tus invitados como asistentes.
+4. Crea un evento en el **Calendario** del CRM: debería aparecer en el
+   calendario central. El equipo podrá verlo y editarlo según los permisos que
+   asignaste desde Google Calendar.
 
 ## Qué se puede hacer ya, y qué falta conectar a la UI
 
-Ya implementado y funcionando de punta a punta:
-- Conexión/desconexión por usuario (`/dashboard/integraciones`).
+Ya implementado:
+- Conexión de la cuenta Google autorizada desde `/dashboard/integraciones`.
 - Sincronización automática del calendario compartido → Google Calendar
-  (crear, editar, borrar eventos) para quien tenga Google conectado.
+   (crear, editar, borrar eventos) en el calendario central configurado; los
+   eventos anteriores conservan su destino.
 - Función lista para usar `enviarGmail(perfilId, { to, subject, html })`
   en `src/lib/google/gmail.ts`, que manda un correo real desde el Gmail del
   usuario.
