@@ -8,11 +8,11 @@ import { NextResponse, type NextRequest } from "next/server";
 // la ficha de un cliente al que tiene acceso (RLS ya filtra los datos)
 // y ver su propia Vista de Águila.
 const RUTA_POR_ROL: Record<string, string[]> = {
-  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
-  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
-  analista: ["analisis", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
-  vendedor: ["ventas", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
-  produccion: ["estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas"],
+  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones"],
+  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones"],
+  analista: ["analisis", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones"],
+  vendedor: ["ventas", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones"],
+  produccion: ["estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones"],
 };
 
 export async function middleware(request: NextRequest) {
