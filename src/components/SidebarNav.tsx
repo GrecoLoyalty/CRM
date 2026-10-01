@@ -69,7 +69,7 @@ export default function SidebarNav({
       </div>
 
       {/* ---------- Navegación ---------- */}
-      <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+      <nav className="max-h-[calc(100vh-16rem)] shrink-0 px-2.5 py-3 overflow-y-auto">
         {grupos.map((grupo, gi) => (
           <div key={grupo.titulo ?? `grupo-${gi}`} className={gi > 0 ? "mt-5" : ""}>
             {grupo.titulo && (
