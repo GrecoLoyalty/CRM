@@ -1,8 +1,8 @@
 "use server";
 
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { enviarEmail } from "@/lib/email";
+import { notificarPerfilesCRM } from "@/lib/notificaciones";
 import type { RespuestaTarea } from "@/lib/types";
 
 // Solo quien tiene la tarea asignada puede mover su propia respuesta —
@@ -64,26 +64,16 @@ export async function actualizarRespuestaTarea(
 
   // Avisa a quien asignó la tarea (si la creó alguien específico) de que hubo movimiento.
   if (tarea.creado_por && tarea.creado_por !== user.id) {
-    const admin = createServiceClient();
     const { data: miPerfil } = await supabase.from("perfiles").select("nombre_completo").eq("id", user.id).single();
-
-    await admin.from("notificaciones").insert({
-      destinatario_id: tarea.creado_por,
+    await notificarPerfilesCRM({
+      perfilIds: [tarea.creado_por],
+      remitenteId: user.id,
       tipo: "tarea_respuesta",
       titulo: `"${tarea.titulo}" ahora está: ${nuevaRespuesta.replace("_", " ")}`,
       mensaje: `${miPerfil?.nombre_completo || "Alguien del equipo"} actualizó el estado de la tarea que le asignaste.`,
+      detalle: linkFinal ? `Entregable: ${linkFinal}` : opciones?.comentario,
+      clienteId: tarea.cliente_id,
     });
-
-    const { data: creadorAuth } = await admin.auth.admin.getUserById(tarea.creado_por);
-    if (creadorAuth?.user?.email) {
-      await enviarEmail({
-        to: [creadorAuth.user.email],
-        subject: `Actualización de tarea: ${tarea.titulo}`,
-        html: `<p><strong>${miPerfil?.nombre_completo || "Alguien del equipo"}</strong> marcó la tarea "${tarea.titulo}" como <strong>${nuevaRespuesta.replace("_", " ")}</strong>.</p>${
-          linkFinal ? `<p>Link: <a href="${linkFinal}">${linkFinal}</a></p>` : ""
-        }`,
-      });
-    }
   }
 
   revalidatePath("/dashboard/mis-tareas");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { enviarMensajeChatCliente } from "@/app/dashboard/chat-actions";
 
 export default function ChatWidget({ userId, esCeo }: { userId: string; esCeo: boolean }) {
   const [abierto, setAbierto] = useState(false);
@@ -9,6 +10,8 @@ export default function ChatWidget({ userId, esCeo }: { userId: string; esCeo: b
   const [clienteId, setClienteId] = useState<string>("");
   const [mensajes, setMensajes] = useState<any[]>([]);
   const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -52,9 +55,17 @@ export default function ChatWidget({ userId, esCeo }: { userId: string; esCeo: b
   }, [clienteId]);
 
   async function enviar() {
-    if (!texto.trim() || !clienteId) return;
-    await supabase.from("chat_mensajes").insert({ cliente_id: clienteId, autor_id: userId, es_ceo: esCeo, contenido: texto });
-    setTexto("");
+    if (!texto.trim() || !clienteId || enviando) return;
+    setEnviando(true);
+    setErrorEnvio(null);
+    try {
+      await enviarMensajeChatCliente(clienteId, texto);
+      setTexto("");
+    } catch (err: any) {
+      setErrorEnvio(err?.message || "No se pudo enviar el mensaje.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -80,6 +91,7 @@ export default function ChatWidget({ userId, esCeo }: { userId: string; esCeo: b
           </div>
           {clienteId && (
             <div className="p-2 border-t border-base-600 flex gap-2">
+              {errorEnvio && <p className="absolute bottom-full left-0 right-0 mb-1 rounded bg-base-900 px-3 py-2 text-xs text-signal-urgent">{errorEnvio}</p>}
               <input
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -87,7 +99,7 @@ export default function ChatWidget({ userId, esCeo }: { userId: string; esCeo: b
                 placeholder="Escribe un mensaje..."
                 className="input-field text-sm flex-1"
               />
-              <button onClick={enviar} className="btn-primary text-sm px-3">➤</button>
+              <button onClick={enviar} disabled={enviando} className="btn-primary text-sm px-3">{enviando ? "…" : "➤"}</button>
             </div>
           )}
         </div>

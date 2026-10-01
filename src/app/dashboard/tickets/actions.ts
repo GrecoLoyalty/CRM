@@ -2,7 +2,7 @@
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { enviarEmail } from "@/lib/email";
+import { notificarPerfilesCRM } from "@/lib/notificaciones";
 import type { Depto, PrioridadTicket } from "@/lib/types";
 
 interface TicketInput {
@@ -27,58 +27,28 @@ interface TicketInput {
 // se registra en el log del servidor y seguimos de largo.
 async function notificarTicket(params: {
   perfilIds: string[];
+  remitenteId: string;
   organizadorNombre: string;
   titulo: string;
   descripcion?: string | null;
   prioridad: string;
   esComentario?: boolean;
+  clienteId?: string | null;
 }) {
-  try {
-    const idsUnicos = [...new Set(params.perfilIds)];
-    if (idsUnicos.length === 0) return;
-    const admin = createServiceClient();
+  const titulo = params.esComentario ? `Nuevo comentario en: ${params.titulo}` : `Nuevo ticket: ${params.titulo}`;
+  const mensaje = params.esComentario
+    ? `${params.organizadorNombre} comentó`
+    : `${params.organizadorNombre} · Prioridad ${params.prioridad}`;
 
-    const tituloNotif = params.esComentario ? `Nuevo comentario en: ${params.titulo}` : `Nuevo ticket: ${params.titulo}`;
-    const mensajeNotif = params.esComentario
-      ? `${params.organizadorNombre} comentó`
-      : `${params.organizadorNombre} · Prioridad ${params.prioridad}`;
-
-    const { error: errNotif } = await admin.from("notificaciones").insert(
-      idsUnicos.map((perfilId) => ({
-        destinatario_id: perfilId,
-        tipo: "ticket",
-        titulo: tituloNotif,
-        mensaje: mensajeNotif,
-      }))
-    );
-    if (errNotif) console.error("[tickets] No se pudo insertar la notificación:", errNotif.message);
-
-    const destinatarios: string[] = [];
-    for (const perfilId of idsUnicos) {
-      const { data, error: errUser } = await admin.auth.admin.getUserById(perfilId);
-      if (errUser) console.error("[tickets] No se pudo obtener el correo de", perfilId, errUser.message);
-      if (data?.user?.email) destinatarios.push(data.user.email);
-    }
-
-    if (destinatarios.length > 0) {
-      await enviarEmail({
-        to: destinatarios,
-        subject: tituloNotif,
-        html: `
-          <div style="font-family:sans-serif;color:#111">
-            <h2 style="margin-bottom:4px">${params.titulo}</h2>
-            <p style="color:#555;margin-top:0">${mensajeNotif}</p>
-            ${params.descripcion ? `<p>${params.descripcion}</p>` : ""}
-            <p style="color:#888;font-size:13px">GRESANOVA OS</p>
-          </div>
-        `,
-      });
-    }
-  } catch (err: any) {
-    // Nunca dejamos que un fallo de notificaciones tumbe la acción principal
-    // (crear/comentar el ticket). Solo lo dejamos registrado en el log.
-    console.error("[tickets] notificarTicket falló, se ignora para no romper la acción principal:", err?.message || err);
-  }
+  await notificarPerfilesCRM({
+    perfilIds: params.perfilIds,
+    remitenteId: params.remitenteId,
+    tipo: "ticket",
+    titulo,
+    mensaje,
+    detalle: params.descripcion,
+    clienteId: params.clienteId,
+  });
 }
 
 // Personas activas que pertenecen a un depto (principal o adicional) —
@@ -157,10 +127,12 @@ export async function crearTicket(input: TicketInput): Promise<{ ticket: any | n
     // hacer que el usuario piense que el ticket no se creó.
     await notificarTicket({
       perfilIds: aNotificar,
+      remitenteId: user.id,
       organizadorNombre: miPerfil?.nombre_completo || "Alguien del equipo",
       titulo: ticket.titulo,
       descripcion: ticket.descripcion,
       prioridad: ticket.prioridad,
+      clienteId: input.clienteId,
     });
 
     revalidatePath("/dashboard/tickets");
@@ -250,7 +222,7 @@ export async function comentarTicket(ticketId: string, mensaje: string): Promise
     if (!mensaje.trim()) return { error: "Escribe algo antes de enviar." };
 
     const { data: miPerfil } = await supabase.from("perfiles").select("nombre_completo").eq("id", user.id).single();
-    const { data: ticket } = await supabase.from("tickets").select("titulo, creado_por, asignado_a").eq("id", ticketId).single();
+    const { data: ticket } = await supabase.from("tickets").select("titulo, creado_por, asignado_a, cliente_id").eq("id", ticketId).single();
 
     const { error } = await supabase.from("ticket_comentarios").insert({
       ticket_id: ticketId,
@@ -264,11 +236,13 @@ export async function comentarTicket(ticketId: string, mensaje: string): Promise
       // Efecto secundario — ya blindado, nunca truena la acción principal.
       await notificarTicket({
         perfilIds: aAvisar,
+        remitenteId: user.id,
         organizadorNombre: miPerfil?.nombre_completo || "Alguien del equipo",
         titulo: ticket.titulo,
         descripcion: mensaje.trim(),
         prioridad: "",
         esComentario: true,
+        clienteId: ticket.cliente_id,
       });
     }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { enviarMensajeChatEquipo } from "@/app/dashboard/chat-actions";
 
 interface Conversacion {
   id: string;
@@ -20,6 +21,8 @@ export default function ChatEquipoWidget({ userId }: { userId: string }) {
   const [conversacionActiva, setConversacionActiva] = useState<Conversacion | null>(null);
   const [mensajes, setMensajes] = useState<any[]>([]);
   const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [noLeidas, setNoLeidas] = useState<Record<string, boolean>>({});
   const supabase = createClient();
 
@@ -116,9 +119,17 @@ export default function ChatEquipoWidget({ userId }: { userId: string }) {
   }
 
   async function enviar() {
-    if (!texto.trim() || !conversacionActiva) return;
-    await supabase.from("mensajes_generales").insert({ conversacion_id: conversacionActiva.id, autor_id: userId, contenido: texto });
-    setTexto("");
+    if (!texto.trim() || !conversacionActiva || enviando) return;
+    setEnviando(true);
+    setErrorEnvio(null);
+    try {
+      await enviarMensajeChatEquipo(conversacionActiva.id, texto);
+      setTexto("");
+    } catch (err: any) {
+      setErrorEnvio(err?.message || "No se pudo enviar el mensaje.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   function nombreConversacion(c: Conversacion) {
@@ -201,6 +212,7 @@ export default function ChatEquipoWidget({ userId }: { userId: string }) {
                 {mensajes.length === 0 && <p className="text-xs text-gray-500 text-center mt-4">Sin mensajes todavía.</p>}
               </div>
               <div className="p-2 border-t border-base-600 flex gap-2">
+                {errorEnvio && <p className="absolute bottom-full left-0 right-0 mb-1 rounded bg-base-900 px-3 py-2 text-xs text-signal-urgent">{errorEnvio}</p>}
                 <input
                   value={texto}
                   onChange={(e) => setTexto(e.target.value)}
@@ -208,7 +220,7 @@ export default function ChatEquipoWidget({ userId }: { userId: string }) {
                   placeholder="Escribe un mensaje..."
                   className="input-field text-sm flex-1"
                 />
-                <button onClick={enviar} className="btn-primary text-sm px-3">➤</button>
+                <button onClick={enviar} disabled={enviando} className="btn-primary text-sm px-3">{enviando ? "…" : "➤"}</button>
               </div>
             </>
           )}

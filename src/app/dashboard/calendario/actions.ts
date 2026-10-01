@@ -2,7 +2,7 @@
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { enviarEmail } from "@/lib/email";
+import { notificarPerfilesCRM } from "@/lib/notificaciones";
 import { crearEventoGoogle, actualizarEventoGoogle, eliminarEventoGoogle } from "@/lib/google/calendar";
 import { googleSharedCalendarConfig } from "@/lib/google/config";
 import { format } from "date-fns";
@@ -118,49 +118,25 @@ export async function eliminarBloqueAgendaPersonal(id: string) {
 // visible por RLS normal.
 async function notificarInvitados(params: {
   invitadoIds: string[];
+  remitenteId: string;
   organizadorNombre: string;
   titulo: string;
   descripcion?: string | null;
   fechaInicio: string;
   ubicacion?: string | null;
-  eventoId: string;
+  clienteId?: string | null;
 }) {
   if (params.invitadoIds.length === 0) return;
-  const admin = createServiceClient();
-
   const fechaBonita = format(new Date(params.fechaInicio), "EEEE d 'de' MMMM, h:mm a", { locale: es });
-
-  await admin.from("notificaciones").insert(
-    params.invitadoIds.map((perfilId) => ({
-      destinatario_id: perfilId,
-      tipo: "evento_calendario",
-      titulo: `Te invitaron a: ${params.titulo}`,
-      mensaje: `${params.organizadorNombre} te invitó · ${fechaBonita}${params.ubicacion ? ` · ${params.ubicacion}` : ""}`,
-    }))
-  );
-
-  // Correo: se obtiene el email real desde auth.users vía Admin API
-  // (perfiles no guarda el correo, solo auth.users lo tiene).
-  const destinatarios: string[] = [];
-  for (const perfilId of params.invitadoIds) {
-    const { data } = await admin.auth.admin.getUserById(perfilId);
-    if (data?.user?.email) destinatarios.push(data.user.email);
-  }
-
-  if (destinatarios.length > 0) {
-    await enviarEmail({
-      to: destinatarios,
-      subject: `Invitación: ${params.titulo}`,
-      html: `
-        <div style="font-family:sans-serif;color:#111">
-          <h2 style="margin-bottom:4px">${params.titulo}</h2>
-          <p style="color:#555;margin-top:0">${fechaBonita}${params.ubicacion ? ` · ${params.ubicacion}` : ""}</p>
-          ${params.descripcion ? `<p>${params.descripcion}</p>` : ""}
-          <p style="color:#888;font-size:13px">Invitado por ${params.organizadorNombre} · GRESANOVA OS</p>
-        </div>
-      `,
-    });
-  }
+  await notificarPerfilesCRM({
+    perfilIds: params.invitadoIds,
+    remitenteId: params.remitenteId,
+    tipo: "evento_calendario",
+    titulo: `Te invitaron a: ${params.titulo}`,
+    mensaje: `${params.organizadorNombre} te invitó · ${fechaBonita}${params.ubicacion ? ` · ${params.ubicacion}` : ""}`,
+    detalle: params.descripcion,
+    clienteId: params.clienteId,
+  });
 }
 
 export async function crearEvento(input: EventoInput) {
@@ -232,12 +208,13 @@ export async function crearEvento(input: EventoInput) {
   const invitadosAAvisar = idsUnicos.filter((id) => id !== user.id);
   await notificarInvitados({
     invitadoIds: invitadosAAvisar,
+    remitenteId: user.id,
     organizadorNombre: miPerfil?.nombre_completo || "Alguien del equipo",
     titulo: evento.titulo,
     descripcion: evento.descripcion,
     fechaInicio: evento.fecha_inicio,
     ubicacion: evento.ubicacion,
-    eventoId: evento.id,
+    clienteId: evento.cliente_id,
   });
 
   revalidatePath("/dashboard/calendario");
@@ -295,12 +272,13 @@ export async function actualizarEvento(eventoId: string, input: EventoInput) {
   if (nuevos.length > 0) {
     await notificarInvitados({
       invitadoIds: nuevos,
+      remitenteId: user.id,
       organizadorNombre: miPerfil?.nombre_completo || "Alguien del equipo",
       titulo: evento.titulo,
       descripcion: evento.descripcion,
       fechaInicio: evento.fecha_inicio,
       ubicacion: evento.ubicacion,
-      eventoId: evento.id,
+      clienteId: evento.cliente_id,
     });
   }
 
