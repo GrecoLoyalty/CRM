@@ -9,6 +9,7 @@ export default function AvisoGoogle() {
   const pathname = usePathname();
   const estado = params?.get("google") ?? null;
   const motivo = params?.get("motivo") ?? null;
+  const agendaSync = params?.get("agenda_sync") ?? null;
   const rutaActual = pathname || "/";
 
   // Limpia el query param de la URL después de mostrarlo, para que un
@@ -22,9 +23,14 @@ export default function AvisoGoogle() {
   if (!estado) return null;
 
   if (estado === "conectado") {
+    const detalleAgenda = agendaSync === "error"
+      ? " No se pudieron subir algunos bloques anteriores; edítalos desde el CRM para reintentar."
+      : agendaSync !== null
+        ? ` Se sincronizaron ${agendaSync} bloques personales pendientes.`
+        : "";
     return (
       <div className="rounded-lg border border-signal-info/35 bg-signal-info/10 text-signal-info text-sm px-4 py-3">
-        Tu cuenta de Google quedó conectada correctamente.
+        Tu cuenta de Google quedó conectada correctamente.{detalleAgenda}
       </div>
     );
   }

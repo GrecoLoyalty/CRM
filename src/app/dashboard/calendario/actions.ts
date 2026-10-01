@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { notificarPerfilesCRM } from "@/lib/notificaciones";
 import { crearEventoGoogle, actualizarEventoGoogle, eliminarEventoGoogle } from "@/lib/google/calendar";
+import { sincronizarBloqueGoogle, type AgendaPersonalGoogleInput } from "@/lib/google/agenda-personal";
 import { googleSharedCalendarConfig } from "@/lib/google/config";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -32,17 +33,7 @@ interface EventoInput {
   invitados: string[]; // ids de perfiles (sin contar al creador)
 }
 
-interface AgendaPersonalInput {
-  titulo: string;
-  fechaInicio: string;
-  fechaFin: string;
-  estado: "ocupado" | "disponible";
-  estadoBloque?: "pendiente" | "listo";
-  notas?: string | null;
-  ubicacion?: string | null;
-  alguienIraConmigo?: string | null;
-  recordatorio?: string | null;
-}
+type AgendaPersonalInput = AgendaPersonalGoogleInput;
 
 export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
   const supabase = createClient();
@@ -66,14 +57,30 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     recordatorio: input.recordatorio?.trim() || null,
   }).select().single();
   if (error) throw new Error(error.message);
+  const sync = await sincronizarBloqueGoogle(user.id, input);
+  let googleEventId = sync.googleEventId;
+  let googleSincronizado = sync.sincronizado;
+  if (googleEventId) {
+    const { error: errorId } = await supabase.from("agenda_personal").update({ google_event_id: googleEventId }).eq("id", data.id);
+    if (errorId) {
+      console.error("[agenda-personal] No se pudo guardar el ID Google:", errorId.message);
+      await eliminarEventoGoogle(user.id, googleEventId);
+      googleEventId = null;
+      googleSincronizado = false;
+    }
+  }
   revalidatePath("/dashboard/calendario");
-  return data;
+  return { ...data, google_event_id: googleEventId, googleSincronizado };
 }
 
 export async function editarBloqueAgendaPersonal(id: string, input: AgendaPersonalInput) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
+  if (!input.titulo.trim()) throw new Error("El bloque necesita un título.");
+  if (new Date(input.fechaFin) <= new Date(input.fechaInicio)) {
+    throw new Error("La fecha de fin debe ser posterior a la de inicio.");
+  }
 
   const payload: Record<string, any> = {
     titulo: input.titulo.trim(),
@@ -89,8 +96,20 @@ export async function editarBloqueAgendaPersonal(id: string, input: AgendaPerson
 
   const { data, error } = await supabase.from("agenda_personal").update(payload).eq("id", id).select().single();
   if (error) throw new Error(error.message);
+  const sync = await sincronizarBloqueGoogle(data.perfil_id, input, data.google_event_id);
+  let googleEventId = sync.googleEventId;
+  let googleSincronizado = sync.sincronizado;
+  if (googleEventId && !data.google_event_id) {
+    const { error: errorId } = await supabase.from("agenda_personal").update({ google_event_id: googleEventId }).eq("id", data.id);
+    if (errorId) {
+      console.error("[agenda-personal] No se pudo guardar el ID Google:", errorId.message);
+      await eliminarEventoGoogle(data.perfil_id, googleEventId);
+      googleEventId = null;
+      googleSincronizado = false;
+    }
+  }
   revalidatePath("/dashboard/calendario");
-  return data;
+  return { ...data, google_event_id: googleEventId, googleSincronizado };
 }
 
 export async function cambiarEstadoBloqueAgendaPersonal(id: string, estadoBloque: "pendiente" | "listo") {
@@ -100,15 +119,53 @@ export async function cambiarEstadoBloqueAgendaPersonal(id: string, estadoBloque
 
   const { data, error } = await supabase.from("agenda_personal").update({ estado_bloque: estadoBloque }).eq("id", id).select().single();
   if (error) throw new Error(error.message);
+  const sync = await sincronizarBloqueGoogle(data.perfil_id, {
+    titulo: data.titulo,
+    fechaInicio: data.fecha_inicio,
+    fechaFin: data.fecha_fin,
+    estado: data.estado,
+    estadoBloque,
+    notas: data.notas,
+    ubicacion: data.ubicacion,
+    alguienIraConmigo: data.alguien_ira_conmigo,
+    recordatorio: data.recordatorio,
+  }, data.google_event_id);
+  let googleEventId = sync.googleEventId;
+  let googleSincronizado = sync.sincronizado;
+  if (googleEventId && !data.google_event_id) {
+    const { error: errorId } = await supabase.from("agenda_personal").update({ google_event_id: googleEventId }).eq("id", data.id);
+    if (errorId) {
+      console.error("[agenda-personal] No se pudo guardar el ID Google:", errorId.message);
+      await eliminarEventoGoogle(data.perfil_id, googleEventId);
+      googleEventId = null;
+      googleSincronizado = false;
+    }
+  }
   revalidatePath("/dashboard/calendario");
-  return data;
+  return { ...data, google_event_id: googleEventId, googleSincronizado };
 }
 
 export async function eliminarBloqueAgendaPersonal(id: string) {
   const supabase = createClient();
+  const { data: bloque, error: errorLectura } = await supabase
+    .from("agenda_personal")
+    .select("perfil_id, google_event_id")
+    .eq("id", id)
+    .single();
+  if (errorLectura || !bloque) throw new Error("No se encontró el bloque de agenda.");
+
+  let googleSincronizado: boolean | null = null;
+  if (bloque.google_event_id) {
+    googleSincronizado = await eliminarEventoGoogle(bloque.perfil_id, bloque.google_event_id);
+    if (!googleSincronizado) {
+      throw new Error("No se pudo borrar el evento de Google Calendar. El bloque sigue guardado en el CRM para que puedas reintentar.");
+    }
+  }
+
   const { error } = await supabase.from("agenda_personal").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/calendario");
+  return { googleSincronizado };
 }
 
 // Notifica (campanita interna + correo) a cada invitado. Usa el cliente de

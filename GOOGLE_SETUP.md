@@ -85,10 +85,12 @@ de Supabase (SQL Editor, o tu flujo normal de migraciones). Crea la tabla
 `perfiles_google` y dos columnas nuevas en `eventos_calendario`.
 
 Aplica también `supabase/migrations/0030_eventos_visibles_portal.sql` y
-`supabase/migrations/0031_google_calendar_destino.sql`, en ese orden. La primera
-agrega la opción de compartir eventos con el portal del cliente; la segunda
-permite al CRM recordar en qué calendario de Google vive cada evento. Si hay
-migraciones anteriores pendientes, aplícalas primero en orden numérico.
+`supabase/migrations/0031_google_calendar_destino.sql` y
+`supabase/migrations/0032_agenda_personal_google.sql`, en ese orden. La primera
+agrega la opción de compartir eventos con el portal; la segunda conserva el
+destino de eventos centrales y la tercera guarda el ID del evento personal de
+Google. Si hay migraciones anteriores pendientes, aplícalas primero en orden
+numérico.
 
 ## 7. Probarlo
 
@@ -98,6 +100,11 @@ migraciones anteriores pendientes, aplícalas primero en orden numérico.
 4. Crea un evento en el **Calendario** del CRM: debería aparecer en el
    calendario central. El equipo podrá verlo y editarlo según los permisos que
    asignaste desde Google Calendar.
+5. Cada integrante debe conectar su cuenta personal desde **Integraciones** para
+   sincronizar los bloques de **Mi calendario personal** con su Google Calendar
+   privado. Los bloques disponibles se crean como eventos transparentes para no
+   bloquear ese horario en Google. Al conectar, también se suben los bloques
+   anteriores que todavía no estaban sincronizados.
 
 ## Qué se puede hacer ya, y qué falta conectar a la UI
 
@@ -106,6 +113,8 @@ Ya implementado:
 - Sincronización automática del calendario compartido → Google Calendar
    (crear, editar, borrar eventos) en el calendario central configurado; los
    eventos anteriores conservan su destino.
+- Sincronización de la agenda personal con el Google Calendar propio de cada
+   integrante, incluyendo bloques existentes al conectar la cuenta.
 - Función lista para usar `enviarGmail(perfilId, { to, subject, html })`
   en `src/lib/google/gmail.ts`, que manda un correo real desde el Gmail del
   usuario.

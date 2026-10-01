@@ -78,6 +78,7 @@ export interface AgendaPersonal {
   ubicacion?: string | null;
   alguien_ira_conmigo?: string | null;
   recordatorio?: string | null;
+  google_event_id?: string | null;
   created_at: string;
   updated_at: string;
 }

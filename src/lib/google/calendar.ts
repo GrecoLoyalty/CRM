@@ -15,6 +15,7 @@ interface EventoGoogleInput {
   todoElDia?: boolean;
   ubicacion?: string | null;
   invitadosEmails?: string[];
+  transparencia?: "opaque" | "transparent";
 }
 
 function cuerpoEvento(input: EventoGoogleInput) {
@@ -22,6 +23,7 @@ function cuerpoEvento(input: EventoGoogleInput) {
     summary: input.titulo,
     description: input.descripcion || undefined,
     location: input.ubicacion || undefined,
+    transparency: input.transparencia,
   };
 
   if (input.todoElDia) {

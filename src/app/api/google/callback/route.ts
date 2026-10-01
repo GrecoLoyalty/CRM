@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { exchangeCodeForTokens, obtenerInfoUsuarioGoogle, guardarConexionGoogle } from "@/lib/google/tokens";
+import { sincronizarAgendaPersonalPendiente } from "@/lib/google/agenda-personal";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -35,6 +36,13 @@ export async function GET(req: NextRequest) {
     const infoUsuario = await obtenerInfoUsuarioGoogle(tokens.access_token);
     await guardarConexionGoogle(user.id, tokens, infoUsuario.email);
     destino.searchParams.set("google", "conectado");
+    try {
+      const sincronizados = await sincronizarAgendaPersonalPendiente(user.id);
+      destino.searchParams.set("agenda_sync", String(sincronizados));
+    } catch (err) {
+      console.error("[google-callback] No se pudieron sincronizar bloques personales pendientes:", err);
+      destino.searchParams.set("agenda_sync", "error");
+    }
   } catch (err: any) {
     console.error("[google-callback]", err);
     destino.searchParams.set("google", "error");

@@ -14,6 +14,7 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cambiarEstadoBloqueAgendaPersonal, crearBloqueAgendaPersonal, editarBloqueAgendaPersonal, eliminarBloqueAgendaPersonal } from "@/app/dashboard/calendario/actions";
 import type { AgendaPersonal } from "@/lib/types";
@@ -31,6 +32,11 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
   const [modalAbierto, setModalAbierto] = useState(false);
   const [bloqueSeleccionado, setBloqueSeleccionado] = useState<AgendaPersonal | null>(null);
   const [formato, setFormato] = useState<"mes" | "agenda">("mes");
+  const [avisoGoogle, setAvisoGoogle] = useState(false);
+
+  function revisarSincronizacion(sincronizado: boolean | null | undefined) {
+    setAvisoGoogle(sincronizado === false);
+  }
 
   const diasVisibles = useMemo(() => eachDayOfInterval({
     start: startOfWeek(startOfMonth(mes), { weekStartsOn: 1 }),
@@ -84,6 +90,12 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
         <button onClick={() => setMes((actual) => addMonths(actual, 1))} className="btn-secondary px-3 py-1.5 text-sm">→</button>
       </div>
 
+      {avisoGoogle && (
+        <p role="status" className="rounded-lg border border-signal-warn/35 bg-signal-warn/10 px-3 py-2 text-sm text-gray-300">
+          El bloque se guardó en el CRM, pero no se sincronizó con Google. <Link href="/dashboard/integraciones" className="text-accent-soft underline">Conecta o revisa tu cuenta de Google</Link> y vuelve a editar el bloque para reintentar.
+        </p>
+      )}
+
       {formato === "mes" ? <div className="card p-4">
         <div className="grid grid-cols-7 gap-1 mb-2">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((dia) => <div key={dia} className="text-center text-xs text-gray-500 font-medium py-1">{dia}</div>)}</div>
         {cargando ? <p className="text-sm text-gray-500 py-6">Cargando agenda...</p> : <div className="grid grid-cols-7 gap-1">
@@ -128,20 +140,20 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
         </div>
       )}
 
-      {modalAbierto && <NuevoBloque onCerrar={() => setModalAbierto(false)} onGuardado={() => { setModalAbierto(false); cargar(); }} />}
-      {bloqueSeleccionado && <DetalleBloqueAgenda bloque={bloqueSeleccionado} onCerrar={() => setBloqueSeleccionado(null)} onDeleted={() => { setBloqueSeleccionado(null); cargar(); }} onUpdated={() => { setBloqueSeleccionado(null); cargar(); }} />}
+      {modalAbierto && <NuevoBloque onCerrar={() => setModalAbierto(false)} onGuardado={(sync) => { setModalAbierto(false); cargar(); revisarSincronizacion(sync); }} />}
+      {bloqueSeleccionado && <DetalleBloqueAgenda bloque={bloqueSeleccionado} onCerrar={() => setBloqueSeleccionado(null)} onDeleted={(sync) => { setBloqueSeleccionado(null); cargar(); revisarSincronizacion(sync); }} onUpdated={(sync) => { setBloqueSeleccionado(null); cargar(); revisarSincronizacion(sync); }} />}
     </div>
   );
 }
 
-function DetalleBloqueAgenda({ bloque, onCerrar, onDeleted, onUpdated }: { bloque: AgendaPersonal; onCerrar: () => void; onDeleted: () => void; onUpdated: () => void }) {
+function DetalleBloqueAgenda({ bloque, onCerrar, onDeleted, onUpdated }: { bloque: AgendaPersonal; onCerrar: () => void; onDeleted: (sync: boolean | null) => void; onUpdated: (sync: boolean) => void }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function cambiarEstado(estadoBloque: "pendiente" | "listo") {
     try {
-      await cambiarEstadoBloqueAgendaPersonal(bloque.id, estadoBloque);
-      onUpdated();
+      const resultado = await cambiarEstadoBloqueAgendaPersonal(bloque.id, estadoBloque);
+      onUpdated(resultado.googleSincronizado);
     } catch (e: any) {
       setError(e.message || "No se pudo cambiar el estado.");
     }
@@ -150,8 +162,8 @@ function DetalleBloqueAgenda({ bloque, onCerrar, onDeleted, onUpdated }: { bloqu
   async function eliminar() {
     if (!window.confirm(`¿Eliminar "${bloque.titulo}"?`)) return;
     try {
-      await eliminarBloqueAgendaPersonal(bloque.id);
-      onDeleted();
+      const resultado = await eliminarBloqueAgendaPersonal(bloque.id);
+      onDeleted(resultado.googleSincronizado);
     } catch (e: any) {
       setError(e.message || "No se pudo eliminar el bloque.");
     }
@@ -185,14 +197,14 @@ function DetalleBloqueAgenda({ bloque, onCerrar, onDeleted, onUpdated }: { bloqu
             </div>
           </>
         ) : (
-          <EditarBloqueForm bloque={bloque} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onUpdated(); }} />
+          <EditarBloqueForm bloque={bloque} onCancel={() => setEditing(false)} onSaved={(sync) => { setEditing(false); onUpdated(sync); }} />
         )}
       </div>
     </div>
   );
 }
 
-function EditarBloqueForm({ bloque, onCancel, onSaved }: { bloque: AgendaPersonal; onCancel: () => void; onSaved: () => void }) {
+function EditarBloqueForm({ bloque, onCancel, onSaved }: { bloque: AgendaPersonal; onCancel: () => void; onSaved: (sync: boolean) => void }) {
   const [titulo, setTitulo] = useState(bloque.titulo);
   const [inicio, setInicio] = useState(format(new Date(bloque.fecha_inicio), "yyyy-MM-dd'T'HH:mm"));
   const [fin, setFin] = useState(format(new Date(bloque.fecha_fin), "yyyy-MM-dd'T'HH:mm"));
@@ -208,8 +220,8 @@ function EditarBloqueForm({ bloque, onCancel, onSaved }: { bloque: AgendaPersona
   function guardar() {
     startTransition(async () => {
       try {
-        await editarBloqueAgendaPersonal(bloque.id, { titulo, fechaInicio: new Date(inicio).toISOString(), fechaFin: new Date(fin).toISOString(), estado, estadoBloque, notas, ubicacion, alguienIraConmigo, recordatorio });
-        onSaved();
+        const resultado = await editarBloqueAgendaPersonal(bloque.id, { titulo, fechaInicio: new Date(inicio).toISOString(), fechaFin: new Date(fin).toISOString(), estado, estadoBloque, notas, ubicacion, alguienIraConmigo, recordatorio });
+        onSaved(resultado.googleSincronizado);
       } catch (e: any) { setError(e.message || "No se pudo guardar el bloque."); }
     });
   }
@@ -231,7 +243,7 @@ function EditarBloqueForm({ bloque, onCancel, onSaved }: { bloque: AgendaPersona
   );
 }
 
-function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardado: () => void }) {
+function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardado: (sync: boolean) => void }) {
   const ahora = new Date();
   const [titulo, setTitulo] = useState("");
   const [inicio, setInicio] = useState(format(ahora, "yyyy-MM-dd'T'HH:mm"));
@@ -248,7 +260,7 @@ function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
   function guardar() {
     startTransition(async () => {
       try {
-        await crearBloqueAgendaPersonal({
+        const resultado = await crearBloqueAgendaPersonal({
           titulo,
           fechaInicio: new Date(inicio).toISOString(),
           fechaFin: new Date(fin).toISOString(),
@@ -259,7 +271,7 @@ function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
           alguienIraConmigo: alguienIraConmigo,
           recordatorio,
         });
-        onGuardado();
+        onGuardado(resultado.googleSincronizado);
       } catch (e: any) { setError(e.message || "No se pudo guardar el bloque."); }
     });
   }
