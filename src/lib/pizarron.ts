@@ -5,6 +5,8 @@ export type ElementoPizarron = {
   x: number;
   y: number;
   color: string;
+  ancho?: number;
+  alto?: number;
 };
 
 export type ConexionPizarron = {
@@ -23,6 +25,20 @@ export type Pizarron = {
 };
 
 export const COLORES_IDEA = ["#F2C66D", "#82C9C3", "#A6B8F5", "#E69ABB", "#F19B79"];
+export const ANCHO_MIN_PIZARRON = 160;
+export const ANCHO_MAX_PIZARRON = 360;
+export const ALTO_MIN_PIZARRON = 100;
+export const ALTO_MAX_PIZARRON = 300;
+export const ANCHO_INICIAL_PIZARRON = 220;
+export const ALTO_INICIAL_PIZARRON = 160;
+
+export function anchoDeElemento(elemento: ElementoPizarron) {
+  return elemento.ancho ?? ANCHO_INICIAL_PIZARRON;
+}
+
+export function altoDeElemento(elemento: ElementoPizarron) {
+  return elemento.alto ?? ALTO_INICIAL_PIZARRON;
+}
 
 export function validarContenidoPizarron(
   elementos: unknown,
@@ -50,7 +66,17 @@ export function validarContenidoPizarron(
       elemento.y < 0 ||
       elemento.y > 100 ||
       typeof elemento.color !== "string" ||
-      !/^#[0-9a-f]{6}$/i.test(elemento.color)
+      !/^#[0-9a-f]{6}$/i.test(elemento.color) ||
+      (elemento.ancho !== undefined &&
+        (typeof elemento.ancho !== "number" ||
+          !Number.isFinite(elemento.ancho) ||
+          elemento.ancho < ANCHO_MIN_PIZARRON ||
+          elemento.ancho > ANCHO_MAX_PIZARRON)) ||
+      (elemento.alto !== undefined &&
+        (typeof elemento.alto !== "number" ||
+          !Number.isFinite(elemento.alto) ||
+          elemento.alto < ALTO_MIN_PIZARRON ||
+          elemento.alto > ALTO_MAX_PIZARRON))
     ) {
       return false;
     }

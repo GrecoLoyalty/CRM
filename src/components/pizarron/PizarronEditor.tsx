@@ -3,7 +3,15 @@
 import { useState } from "react";
 import Icon from "@/components/ui/Icon";
 import {
+  ALTO_INICIAL_PIZARRON,
+  ALTO_MAX_PIZARRON,
+  ALTO_MIN_PIZARRON,
+  ANCHO_INICIAL_PIZARRON,
+  ANCHO_MAX_PIZARRON,
+  ANCHO_MIN_PIZARRON,
   COLORES_IDEA,
+  altoDeElemento,
+  anchoDeElemento,
   type ConexionPizarron,
   type ElementoPizarron,
   type Pizarron,
@@ -26,6 +34,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
   const [activoId, setActivoId] = useState(iniciales[0]?.id || "");
   const [conectar, setConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
+  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [arrastrando, setArrastrando] = useState<string | null>(null);
   const [correo, setCorreo] = useState("");
   const [mostrarCorreo, setMostrarCorreo] = useState(false);
@@ -34,6 +43,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
 
   const pizarron = pizarrones.find((item) => item.id === activoId);
   const editable = !!pizarron && (pizarron.creado_por === userId || puedeAdministrar);
+  const elementoSeleccionado = pizarron?.elementos.find((item) => item.id === seleccionadoId);
 
   function actualizarActivo(cambios: Partial<Pizarron>) {
     setPizarrones((actuales) =>
@@ -62,6 +72,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
       ...actuales,
     ]);
     setActivoId(resultado.id);
+    setSeleccionadoId(null);
     setMostrarCorreo(false);
     setMensaje("");
   }
@@ -75,6 +86,8 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
       x: 8 + (pizarron.elementos.length % 4) * 21,
       y: 12 + (Math.floor(pizarron.elementos.length / 4) % 5) * 15,
       color: tipo === "idea" ? COLORES_IDEA[pizarron.elementos.length % COLORES_IDEA.length] : "#93A4B8",
+      ancho: ANCHO_INICIAL_PIZARRON,
+      alto: ALTO_INICIAL_PIZARRON,
     };
     actualizarActivo({ elementos: [...pizarron.elementos, elemento] });
     setMensaje("Cambios sin guardar.");
@@ -91,7 +104,10 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
   }
 
   function seleccionarElemento(id: string) {
-    if (!conectar || !pizarron || !editable) return;
+    if (!conectar || !pizarron || !editable) {
+      setSeleccionadoId(id);
+      return;
+    }
     if (!origenConexion) {
       setOrigenConexion(id);
       setMensaje("Selecciona la idea de destino.");
@@ -120,8 +136,16 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
   function moverElemento(event: React.PointerEvent<HTMLDivElement>) {
     if (!arrastrando || !pizarron || !editable) return;
     const bounds = event.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min(82, ((event.clientX - bounds.left) / bounds.width) * 100));
-    const y = Math.max(0, Math.min(88, ((event.clientY - bounds.top) / bounds.height) * 100));
+    const elemento = pizarron.elementos.find((item) => item.id === arrastrando);
+    if (!elemento) return;
+    const x = Math.max(
+      0,
+      Math.min(100 - anchoDeElemento(elemento) / 10, ((event.clientX - bounds.left) / bounds.width) * 100)
+    );
+    const y = Math.max(
+      0,
+      Math.min(100 - altoDeElemento(elemento) / 6.5, ((event.clientY - bounds.top) / bounds.height) * 100)
+    );
     actualizarActivo({
       elementos: pizarron.elementos.map((elemento) =>
         elemento.id === arrastrando ? { ...elemento, x, y } : elemento
@@ -200,6 +224,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
     const siguientes = pizarrones.filter((item) => item.id !== pizarron.id);
     setPizarrones(siguientes);
     setActivoId(siguientes[0]?.id || "");
+    setSeleccionadoId(null);
     setMensaje("");
   }
 
@@ -225,6 +250,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
               key={item.id}
               onClick={() => {
                 setActivoId(item.id);
+                setSeleccionadoId(null);
                 setMostrarCorreo(false);
                 setMensaje("");
               }}
@@ -338,6 +364,60 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
             <p className="text-sm text-gray-500">Este pizarrón es de otra persona. Puedes revisarlo, enviarlo o descargarlo.</p>
           )}
 
+          {editable && elementoSeleccionado && (
+            <div className="card flex flex-wrap items-end gap-4 p-4">
+              <p className="w-full text-sm font-medium text-gray-200">
+                Ajustes de {elementoSeleccionado.tipo === "idea" ? "idea" : "texto"}
+              </p>
+              <label className="flex items-center gap-2 text-xs text-gray-400">
+                Color
+                <input
+                  aria-label="Color del elemento seleccionado"
+                  className="h-9 w-12 cursor-pointer rounded border border-base-500 bg-transparent p-1"
+                  type="color"
+                  value={elementoSeleccionado.color}
+                  onChange={(event) => actualizarElemento(elementoSeleccionado.id, { color: event.target.value })}
+                />
+              </label>
+              <label className="min-w-[180px] flex-1 text-xs text-gray-400">
+                Ancho: {anchoDeElemento(elementoSeleccionado)} px
+                <input
+                  aria-label="Ancho del elemento seleccionado"
+                  className="mt-2 block w-full accent-accent"
+                  type="range"
+                  min={ANCHO_MIN_PIZARRON}
+                  max={ANCHO_MAX_PIZARRON}
+                  step={10}
+                  value={anchoDeElemento(elementoSeleccionado)}
+                  onChange={(event) =>
+                    actualizarElemento(elementoSeleccionado.id, { ancho: Number(event.target.value) })
+                  }
+                />
+              </label>
+              <label className="min-w-[180px] flex-1 text-xs text-gray-400">
+                Alto: {altoDeElemento(elementoSeleccionado)} px
+                <input
+                  aria-label="Alto del elemento seleccionado"
+                  className="mt-2 block w-full accent-accent"
+                  type="range"
+                  min={ALTO_MIN_PIZARRON}
+                  max={ALTO_MAX_PIZARRON}
+                  step={10}
+                  value={altoDeElemento(elementoSeleccionado)}
+                  onChange={(event) =>
+                    actualizarElemento(elementoSeleccionado.id, { alto: Number(event.target.value) })
+                  }
+                />
+              </label>
+              <button
+                className="btn-ghost text-xs"
+                onClick={() => setSeleccionadoId(null)}
+              >
+                Cerrar ajustes
+              </button>
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-xl border border-base-600">
             <div
               className={`relative h-[620px] min-w-[850px] overflow-hidden bg-base-850 ${
@@ -353,24 +433,43 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
             >
             <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 650" preserveAspectRatio="none" aria-hidden="true">
               <defs>
-                <marker id="pizarron-flecha" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L6,3 z" fill="#6f849e" />
-                </marker>
+                {pizarron.conexiones.map((conexion, index) => {
+                  const hacia = pizarron.elementos.find((elemento) => elemento.id === conexion.hacia);
+                  if (!hacia) return null;
+                  return (
+                    <g key={conexion.id}>
+                      <linearGradient id={`pizarron-linea-${index}`}>
+                        <stop offset="0%" stopColor={pizarron.elementos.find((elemento) => elemento.id === conexion.desde)?.color || "#6f849e"} />
+                        <stop offset="100%" stopColor={hacia.color} />
+                      </linearGradient>
+                      <marker
+                        id={`pizarron-flecha-${index}`}
+                        markerWidth="8"
+                        markerHeight="8"
+                        refX="6"
+                        refY="3"
+                        orient="auto"
+                      >
+                        <path d="M0,0 L0,6 L6,3 z" fill={hacia.color} />
+                      </marker>
+                    </g>
+                  );
+                })}
               </defs>
-              {pizarron.conexiones.map((conexion) => {
+              {pizarron.conexiones.map((conexion, index) => {
                 const desde = pizarron.elementos.find((elemento) => elemento.id === conexion.desde);
                 const hacia = pizarron.elementos.find((elemento) => elemento.id === conexion.hacia);
                 if (!desde || !hacia) return null;
                 return (
                   <line
                     key={conexion.id}
-                    x1={desde.x * 10 + 90}
-                    y1={desde.y * 6.5 + 46}
-                    x2={hacia.x * 10 + 90}
-                    y2={hacia.y * 6.5 + 46}
-                    stroke="#6f849e"
+                    x1={desde.x * 10 + anchoDeElemento(desde) / 2}
+                    y1={desde.y * 6.5 + altoDeElemento(desde) / 2}
+                    x2={hacia.x * 10 + anchoDeElemento(hacia) / 2}
+                    y2={hacia.y * 6.5 + altoDeElemento(hacia) / 2}
+                    stroke={`url(#pizarron-linea-${index})`}
                     strokeWidth="2"
-                    markerEnd="url(#pizarron-flecha)"
+                    markerEnd={`url(#pizarron-flecha-${index})`}
                   />
                 );
               })}
@@ -379,16 +478,18 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
             {pizarron.elementos.map((elemento) => (
               <div
                 key={elemento.id}
-                className={`absolute w-[190px] rounded-xl border p-3 shadow-lg ${
+                className={`absolute flex flex-col overflow-hidden rounded-xl border p-3 shadow-lg ${
                   elemento.tipo === "idea" ? "text-gray-950" : "bg-base-800/95 text-gray-100"
                 } ${conectar && editable ? "cursor-crosshair ring-2 ring-accent/30" : editable ? "cursor-grab active:cursor-grabbing" : ""} ${
-                  origenConexion === elemento.id ? "ring-2 ring-accent" : ""
+                  origenConexion === elemento.id || seleccionadoId === elemento.id ? "ring-2 ring-accent" : ""
                 }`}
                 style={{
                   left: `${elemento.x}%`,
                   top: `${elemento.y}%`,
-                  backgroundColor: elemento.tipo === "idea" ? elemento.color : undefined,
-                  borderColor: elemento.tipo === "idea" ? `${elemento.color}aa` : "#34415b",
+                  width: `${anchoDeElemento(elemento) / 10}%`,
+                  height: `${altoDeElemento(elemento) / 6.5}%`,
+                  backgroundColor: elemento.tipo === "idea" ? elemento.color : "#1e293b",
+                  borderColor: elemento.color,
                   touchAction: "none",
                 }}
                 onPointerDown={(event) => {
@@ -436,14 +537,17 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                 </div>
                 <textarea
                   aria-label={`Contenido de ${elemento.tipo}`}
-                  className={`min-h-[64px] w-full resize-none bg-transparent text-sm leading-relaxed outline-none ${
+                  className={`min-h-0 w-full flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none ${
                     elemento.tipo === "idea" ? "font-semibold text-gray-950 placeholder:text-gray-700" : "text-gray-100 placeholder:text-gray-600"
                   }`}
                   value={elemento.texto}
                   disabled={!editable}
                   maxLength={2000}
                   onChange={(event) => actualizarElemento(elemento.id, { texto: event.target.value })}
-                  onClick={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!conectar) setSeleccionadoId(elemento.id);
+                  }}
                   placeholder="Escribe tu idea…"
                 />
               </div>
