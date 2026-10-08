@@ -5,6 +5,7 @@ export type Grupo = { titulo?: string; items: Item[] };
 
 const DIA_A_DIA: Item[] = [
   { href: "/dashboard/calendario", label: "Calendario", icon: "calendario" },
+  { href: "/dashboard/pizarron", label: "Pizarrón", icon: "pizarron" },
   { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
   { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "tareas" },
 ];

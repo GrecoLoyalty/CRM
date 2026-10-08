@@ -10,6 +10,7 @@ export type IconName =
   | "panel"
   | "clientes"
   | "calendario"
+  | "pizarron"
   | "tickets"
   | "tareas"
   | "aguila"
@@ -55,6 +56,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M16 2v4" />
       <rect width="18" height="18" x="3" y="4" rx="2" />
       <path d="M3 10h18" />
+    </>
+  ),
+  pizarron: (
+    <>
+      <rect x="3" y="3" width="18" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4M7 8h10M7 12h6" />
     </>
   ),
   tickets: (
