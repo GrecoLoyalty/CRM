@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import {
   ALTO_INICIAL_PIZARRON,
   ALTO_MAX_PIZARRON,
@@ -18,9 +19,13 @@ import {
 } from "@/lib/pizarron";
 import {
   crearPizarron,
+  crearEnlaceInvitacion,
+  clonarPizarron,
   eliminarPizarron,
   enviarPizarronPorCorreo,
   guardarPizarron,
+  quitarPizarronCompartido,
+  revocarEnlaceInvitacion,
 } from "@/app/dashboard/pizarron/actions";
 
 type Props = {
@@ -47,13 +52,55 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [arrastrando, setArrastrando] = useState<string | null>(null);
   const [correo, setCorreo] = useState("");
+  const [enlaceInvitacion, setEnlaceInvitacion] = useState("");
   const [mostrarCorreo, setMostrarCorreo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
   const pizarron = pizarrones.find((item) => item.id === activoId);
-  const editable = !!pizarron && (pizarron.creado_por === userId || puedeAdministrar);
+  const editable = !!pizarron && !pizarron.compartido && (pizarron.creado_por === userId || puedeAdministrar);
   const elementoSeleccionado = pizarron?.elementos.find((item) => item.id === seleccionadoId);
+
+  useEffect(() => {
+    if (!pizarron?.compartido) return;
+
+    const supabase = createBrowserClient();
+    const canal = supabase
+      .channel(`pizarron-compartido-${pizarron.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "pizarrones",
+          filter: `id=eq.${pizarron.id}`,
+        },
+        async () => {
+          const { data, error } = await supabase
+            .from("pizarrones")
+            .select("*")
+            .eq("id", pizarron.id)
+            .maybeSingle();
+          if (error) {
+            console.error("[pizarron] No se pudo actualizar el pizarrón compartido:", error.message);
+            return;
+          }
+          if (!data) return;
+          setPizarrones((actuales) =>
+            actuales.map((item) => item.id === pizarron.id ? { ...data, compartido: true } : item)
+          );
+        }
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`[pizarron] Falló la conexión en tiempo real: ${status}`);
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(canal);
+    };
+  }, [pizarron?.compartido, pizarron?.id]);
 
   function actualizarActivo(cambios: Partial<Pizarron>) {
     setPizarrones((actuales) =>
@@ -84,6 +131,76 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
     setActivoId(resultado.id);
     setSeleccionadoId(null);
     setMostrarCorreo(false);
+    setEnlaceInvitacion("");
+    setMensaje("");
+  }
+
+  async function generarEnlaceInvitacion() {
+    if (!pizarron || !editable) return;
+    setOcupado(true);
+    const resultado = await crearEnlaceInvitacion(pizarron.id);
+    setOcupado(false);
+    if (!resultado.token) {
+      setMensaje(resultado.error || "No se pudo generar el enlace.");
+      return;
+    }
+    setEnlaceInvitacion(`${window.location.origin}/dashboard/pizarron/invitacion/${resultado.token}`);
+    setMensaje("Enlace de invitación listo para compartir.");
+  }
+
+  async function copiarEnlaceInvitacion() {
+    if (!enlaceInvitacion) return;
+    try {
+      await navigator.clipboard.writeText(enlaceInvitacion);
+      setMensaje("Enlace copiado.");
+    } catch (error) {
+      console.error("[pizarron] No se pudo copiar el enlace:", error);
+      setMensaje("No se pudo copiar automáticamente. Selecciona y copia el enlace.");
+    }
+  }
+
+  async function revocarInvitacionActual() {
+    if (!pizarron || !editable) return;
+    setOcupado(true);
+    const resultado = await revocarEnlaceInvitacion(pizarron.id);
+    setOcupado(false);
+    if (resultado.error) {
+      setMensaje(resultado.error);
+      return;
+    }
+    setEnlaceInvitacion("");
+    setMensaje("Enlace revocado. Quienes ya lo agregaron conservarán el acceso; los demás ya no podrán aceptarlo.");
+  }
+
+  async function crearCopiaPersonal() {
+    if (!pizarron?.compartido) return;
+    setOcupado(true);
+    const resultado = await clonarPizarron(pizarron.id);
+    setOcupado(false);
+    if (!resultado.pizarron) {
+      setMensaje(resultado.error || "No se pudo clonar el pizarrón.");
+      return;
+    }
+    setPizarrones((actuales) => [{ ...resultado.pizarron!, compartido: false }, ...actuales]);
+    setActivoId(resultado.pizarron.id);
+    setSeleccionadoId(null);
+    setEnlaceInvitacion("");
+    setMensaje("Copia personal creada. Ya puedes editarla.");
+  }
+
+  async function quitarCompartidoActual() {
+    if (!pizarron?.compartido) return;
+    setOcupado(true);
+    const resultado = await quitarPizarronCompartido(pizarron.id);
+    setOcupado(false);
+    if (resultado.error) {
+      setMensaje(resultado.error);
+      return;
+    }
+    const siguientes = pizarrones.filter((item) => item.id !== pizarron.id);
+    setPizarrones(siguientes);
+    setActivoId(siguientes[0]?.id || "");
+    setSeleccionadoId(null);
     setMensaje("");
   }
 
@@ -262,6 +379,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                 setActivoId(item.id);
                 setSeleccionadoId(null);
                 setMostrarCorreo(false);
+                setEnlaceInvitacion("");
                 setMensaje("");
               }}
               className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
@@ -271,6 +389,9 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
               }`}
             >
               {item.titulo}
+              {item.compartido && (
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-accent-soft">Compartido</span>
+              )}
             </button>
           ))}
         </div>
@@ -342,7 +463,49 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                 <Icon name="cerrar" className="h-4 w-4" />
               </button>
             )}
+            {pizarron.compartido && (
+              <>
+                <button className="btn-primary" onClick={crearCopiaPersonal} disabled={ocupado}>
+                  Clonar a mis pizarrones
+                </button>
+                <button className="btn-secondary" onClick={quitarCompartidoActual} disabled={ocupado}>
+                  Quitar de mi lista
+                </button>
+              </>
+            )}
           </div>
+
+          {editable && !pizarron.compartido && (
+            <div className="card space-y-3 p-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-200">Compartir con el equipo</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Quien acepte el enlace podrá ver en vivo los cambios guardados y clonar el pizarrón. No podrá editar el original.
+                </p>
+              </div>
+              {enlaceInvitacion ? (
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className="input-field min-w-[220px] flex-1 text-sm"
+                    aria-label="Enlace de invitación"
+                    readOnly
+                    value={enlaceInvitacion}
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                  <button className="btn-secondary" onClick={copiarEnlaceInvitacion}>
+                    Copiar enlace
+                  </button>
+                  <button className="btn-secondary text-signal-urgent" onClick={revocarInvitacionActual} disabled={ocupado}>
+                    Revocar enlace
+                  </button>
+                </div>
+              ) : (
+                <button className="btn-secondary w-fit" onClick={generarEnlaceInvitacion} disabled={ocupado}>
+                  Generar enlace de invitación
+                </button>
+              )}
+            </div>
+          )}
 
           {mostrarCorreo && (
             <form onSubmit={enviarCorreo} className="card flex flex-wrap items-end gap-3 p-4">
@@ -371,7 +534,11 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
           )}
 
           {!editable && (
-            <p className="text-sm text-gray-500">Este pizarrón es de otra persona. Puedes revisarlo, enviarlo o descargarlo.</p>
+            <p className="text-sm text-gray-500">
+              {pizarron.compartido
+                ? "Pizarrón compartido en modo de solo lectura. Recibirás en tiempo real los cambios guardados; clónalo para editar tu propia copia."
+                : "Este pizarrón es de otra persona. Puedes revisarlo, enviarlo o descargarlo."}
+            </p>
           )}
 
           {editable && elementoSeleccionado && (

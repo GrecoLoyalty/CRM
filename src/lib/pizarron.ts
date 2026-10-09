@@ -22,6 +22,7 @@ export type Pizarron = {
   conexiones: ConexionPizarron[];
   creado_por: string;
   updated_at: string;
+  compartido?: boolean;
 };
 
 export const COLORES_IDEA = ["#F2C66D", "#82C9C3", "#A6B8F5", "#E69ABB", "#F19B79"];
