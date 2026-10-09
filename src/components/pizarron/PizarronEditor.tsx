@@ -29,6 +29,16 @@ type Props = {
   puedeAdministrar: boolean;
 };
 
+function colorEsClaro(color: string) {
+  const canales = color.match(/[0-9a-f]{2}/gi)?.map((canal) => parseInt(canal, 16)) || [];
+  if (canales.length !== 3) return true;
+  const [rojo, verde, azul] = canales.map((canal) => {
+    const valor = canal / 255;
+    return valor <= 0.04045 ? valor / 12.92 : ((valor + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * rojo + 0.7152 * verde + 0.0722 * azul > 0.4;
+}
+
 export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdministrar }: Props) {
   const [pizarrones, setPizarrones] = useState(iniciales);
   const [activoId, setActivoId] = useState(iniciales[0]?.id || "");
@@ -369,8 +379,20 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
               <p className="w-full text-sm font-medium text-gray-200">
                 Ajustes de {elementoSeleccionado.tipo === "idea" ? "idea" : "texto"}
               </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Color</span>
+                {COLORES_IDEA.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-label={`Usar color ${color}`}
+                    aria-pressed={elementoSeleccionado.color.toLowerCase() === color.toLowerCase()}
+                    className="h-7 w-7 rounded-full border border-white/30 ring-offset-2 ring-offset-base-800 aria-pressed:ring-2 aria-pressed:ring-accent"
+                    style={{ backgroundColor: color }}
+                    onClick={() => actualizarElemento(elementoSeleccionado.id, { color })}
+                  />
+                ))}
               <label className="flex items-center gap-2 text-xs text-gray-400">
-                Color
                 <input
                   aria-label="Color del elemento seleccionado"
                   className="h-9 w-12 cursor-pointer rounded border border-base-500 bg-transparent p-1"
@@ -379,6 +401,7 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                   onChange={(event) => actualizarElemento(elementoSeleccionado.id, { color: event.target.value })}
                 />
               </label>
+              </div>
               <label className="min-w-[180px] flex-1 text-xs text-gray-400">
                 Ancho: {anchoDeElemento(elementoSeleccionado)} px
                 <input
@@ -488,8 +511,9 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                   top: `${elemento.y}%`,
                   width: `${anchoDeElemento(elemento) / 10}%`,
                   height: `${altoDeElemento(elemento) / 6.5}%`,
-                  backgroundColor: elemento.tipo === "idea" ? elemento.color : "#1e293b",
+                  backgroundColor: elemento.color,
                   borderColor: elemento.color,
+                  color: colorEsClaro(elemento.color) ? "#1a2130" : "#f3f4f6",
                   touchAction: "none",
                 }}
                 onPointerDown={(event) => {
@@ -514,12 +538,12 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                 tabIndex={conectar && editable ? 0 : undefined}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${elemento.tipo === "idea" ? "text-gray-800/70" : "text-gray-500"}`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
                     {elemento.tipo === "idea" ? "Idea" : "Texto"}
                   </span>
                   {editable && (
                     <button
-                      className={`rounded px-1 text-xs ${elemento.tipo === "idea" ? "text-gray-800/70 hover:text-gray-950" : "text-gray-500 hover:text-white"}`}
+                      className="rounded px-1 text-xs opacity-70 hover:opacity-100"
                       aria-label="Eliminar elemento"
                       onClick={() => {
                         actualizarActivo({
@@ -538,8 +562,9 @@ export default function PizarronEditor({ pizarrones: iniciales, userId, puedeAdm
                 <textarea
                   aria-label={`Contenido de ${elemento.tipo}`}
                   className={`min-h-0 w-full flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none ${
-                    elemento.tipo === "idea" ? "font-semibold text-gray-950 placeholder:text-gray-700" : "text-gray-100 placeholder:text-gray-600"
+                    elemento.tipo === "idea" ? "font-semibold" : ""
                   }`}
+                  style={{ color: colorEsClaro(elemento.color) ? "#1a2130" : "#f3f4f6" }}
                   value={elemento.texto}
                   disabled={!editable}
                   maxLength={2000}
