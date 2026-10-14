@@ -6,14 +6,16 @@ import { cambiarEstadoMarca, eliminarMarca, guardarMarca } from "@/app/dashboard
 const PLATAFORMAS = ["Instagram", "TikTok", "YouTube", "Facebook", "LinkedIn", "X"];
 type Marca = {
   id: string;
+  cliente_id: string | null;
   nombre: string;
   logo_url: string | null;
   color: string;
   plataformas_activas: string[];
   activa: boolean;
 };
+type Cliente = { id: string; nombre_empresa: string; foto_url: string | null };
 
-export default function MarcasPanel({ marcas }: { marcas: Marca[] }) {
+export default function MarcasPanel({ marcas, clientes }: { marcas: Marca[]; clientes: Cliente[] }) {
   const [editando, setEditando] = useState<Marca | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +31,7 @@ export default function MarcasPanel({ marcas }: { marcas: Marca[] }) {
     try {
       await guardarMarca({
         id: editando?.id,
+        cliente_id: String(form.get("cliente_id") || "") || null,
         nombre: String(form.get("nombre") || ""),
         logo_url: String(form.get("logo_url") || ""),
         color: String(form.get("color") || "#3AA7A1"),
@@ -92,6 +95,9 @@ export default function MarcasPanel({ marcas }: { marcas: Marca[] }) {
                 )}
                 <div className="min-w-0">
                   <h3 className="font-semibold text-gray-100 truncate">{marca.nombre}</h3>
+                  <p className="text-xs text-accent-soft truncate">
+                    {clientes.find((cliente) => cliente.id === marca.cliente_id)?.nombre_empresa || "Marca independiente"}
+                  </p>
                   <p className="text-xs text-gray-500">{marca.activa ? "Activa" : "Archivada"}</p>
                 </div>
                 <span className="ml-auto w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: marca.color }} />
@@ -122,6 +128,15 @@ export default function MarcasPanel({ marcas }: { marcas: Marca[] }) {
             <h3 className="font-display text-lg font-semibold">{editando ? "Editar marca" : "Crear marca"}</h3>
             <label className="block text-sm text-gray-300">Nombre
               <input name="nombre" required defaultValue={editando?.nombre} className="input-field mt-1" maxLength={100} />
+            </label>
+            <label className="block text-sm text-gray-300">Cliente del CRM (opcional)
+              <select name="cliente_id" defaultValue={editando?.cliente_id || ""} className="input-field mt-1">
+                <option value="">Marca independiente</option>
+                {clientes.map((cliente) => (
+                  <option key={cliente.id} value={cliente.id}>{cliente.nombre_empresa}</option>
+                ))}
+              </select>
+              <span className="block text-xs text-gray-500 mt-1">Una empresa puede tener varias marcas. Los clientes existentes ya aparecen vinculados.</span>
             </label>
             <label className="block text-sm text-gray-300">URL del logo
               <input name="logo_url" type="url" defaultValue={editando?.logo_url || ""} className="input-field mt-1" placeholder="https://" />

@@ -75,6 +75,7 @@ function invalidarMarketing() {
 
 export async function guardarMarca(input: {
   id?: string;
+  cliente_id: string | null;
   nombre: string;
   logo_url: string;
   color: string;
@@ -85,12 +86,12 @@ export async function guardarMarca(input: {
   if (!nombre) throw new Error("Escribe el nombre de la marca.");
   if (!/^#[0-9a-f]{6}$/i.test(input.color)) throw new Error("El color debe ser hexadecimal (por ejemplo, #3AA7A1).");
   const payload = {
+    cliente_id: input.cliente_id || null,
     nombre,
     logo_url: normalizarUrl(input.logo_url, "logo"),
     color: input.color,
     plataformas_activas: [...new Set(input.plataformas_activas.map((p) => p.trim()).filter(Boolean))],
   };
-  if (payload.plataformas_activas.length === 0) throw new Error("Activa al menos una plataforma para esta marca.");
   const { error } = input.id
     ? await supabase.from("marcas").update(payload).eq("id", input.id).select("id").single()
     : await supabase.from("marcas").insert(payload);
