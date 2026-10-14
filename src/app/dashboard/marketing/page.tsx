@@ -1,10 +1,9 @@
 import Link from "next/link";
 
 const SECCIONES = [
-  { href: "/dashboard/marketing/calendario", titulo: "Calendario de contenido", detalle: "Planea fechas, canales, responsables y materiales.", icono: "◷" },
+  { href: "/dashboard/marketing/calendario", titulo: "Planificar y asignar", detalle: "Programa publicaciones y asigna a cualquier usuario activo para grabar o publicar.", icono: "◷" },
   { href: "/dashboard/marketing/guiones", titulo: "Guiones", detalle: "Escribe escenas, ganchos y llamados a la acción.", icono: "✎" },
   { href: "/dashboard/marketing/marcas", titulo: "Marcas", detalle: "Organiza colores, logos y plataformas activas.", icono: "◈" },
-  { href: "/dashboard/marketing/para-publicar", titulo: "Para publicar", detalle: "Abre videos asignados y completa publicaciones.", icono: "↗" },
 ];
 
 export default function MarketingPage() {
@@ -13,6 +12,7 @@ export default function MarketingPage() {
       <p className="text-xs uppercase tracking-[0.14em] text-accent-soft">Análisis · logística · estrategia</p>
       <h2 className="text-2xl font-display font-semibold mt-1">Estrategia de contenido</h2>
       <p className="text-sm text-gray-500 mt-1">El equipo de Análisis coordina la planeación de contenido para todas las marcas y equipos.</p>
+      <p className="text-sm text-gray-400 mt-3">Flujo: cliente y marca → guion → calendario y responsable → publicación.</p>
     </header>
     <div className="grid gap-3 sm:grid-cols-2">
       {SECCIONES.map((seccion) => <Link key={seccion.href} href={seccion.href} className="card-link p-5 flex gap-4 items-start">

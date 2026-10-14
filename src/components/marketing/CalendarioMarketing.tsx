@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { eliminarPublicacion, guardarPublicacion, moverPublicacion } from "@/app/dashboard/marketing/actions";
 
 type Marca = { id: string; nombre: string; color: string; plataformas_activas: string[]; activa: boolean };
-type PerfilOpcion = { id: string; nombre_completo: string };
+type PerfilOpcion = { id: string; nombre_completo: string; role: string; departamento: string };
 type GuionOpcion = { id: string; marca_id: string; titulo: string };
 type Publicacion = {
   id: string; marca_id: string; plataforma: string; fecha_hora: string; guion_id: string | null;
@@ -188,7 +188,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
       {vista === "lista" ? <div className="space-y-2">
         {dias.map((day) => <div key={fechaLocal(day)} onDragOver={(e) => e.preventDefault()} onDrop={() => arrastrada && soltarEnDia(arrastrada, day)} className="card p-3 min-h-16">
           <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-2">{day.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}</h3>
-          <div className="flex flex-wrap gap-2">{publicacionesDelDia(day).map((pub) => <TarjetaPublicacion key={pub.id} pub={pub} marca={marcas.find((m) => m.id === pub.marca_id)} draggable={pub.estado === "pendiente"} onDragStart={() => setArrastrada(pub.id)} onClick={() => abrirEdicion(pub)} />)}</div>
+          <div className="flex flex-wrap gap-2">{publicacionesDelDia(day).map((pub) => <TarjetaPublicacion key={pub.id} pub={pub} marca={marcas.find((m) => m.id === pub.marca_id)} responsable={perfiles.find((p) => p.id === pub.responsable_id)} draggable={pub.estado === "pendiente"} onDragStart={() => setArrastrada(pub.id)} onClick={() => abrirEdicion(pub)} />)}</div>
         </div>)}
         {!filtradas.some((p) => dias.some((day) => fechaLocal(new Date(p.fecha_hora)) === fechaLocal(day))) && <div className="card p-8 text-center text-gray-500">No hay publicaciones en este periodo.</div>}
       </div> : <div className={vista === "mes" ? "grid grid-cols-7 gap-1 sm:gap-2" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2"}>
@@ -197,7 +197,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
           className={`card p-1.5 sm:p-2 min-h-24 sm:min-h-32 ${vista === "mes" && day.getMonth() !== fecha.getMonth() ? "opacity-40" : ""}`}>
           <div className="flex justify-between items-center mb-1"><span className={`text-xs ${fechaLocal(day) === fechaLocal(new Date()) ? "text-accent-neon font-semibold" : "text-gray-500"}`}>{day.toLocaleDateString("es-MX", { weekday: vista === "semana" ? "short" : undefined, day: "numeric" })}</span>
             <button aria-label={`Programar para ${fechaLocal(day)}`} className="text-gray-600 hover:text-accent-soft text-xs" onClick={() => { setFecha(day); setSeleccionado(null); setModal(true); }}>+</button></div>
-          <div className="space-y-1">{publicacionesDelDia(day).map((pub) => <TarjetaPublicacion key={pub.id} pub={pub} marca={marcas.find((m) => m.id === pub.marca_id)} draggable={pub.estado === "pendiente"} onDragStart={() => setArrastrada(pub.id)} onClick={() => abrirEdicion(pub)} compact={vista === "mes"} />)}</div>
+          <div className="space-y-1">{publicacionesDelDia(day).map((pub) => <TarjetaPublicacion key={pub.id} pub={pub} marca={marcas.find((m) => m.id === pub.marca_id)} responsable={perfiles.find((p) => p.id === pub.responsable_id)} draggable={pub.estado === "pendiente"} onDragStart={() => setArrastrada(pub.id)} onClick={() => abrirEdicion(pub)} compact={vista === "mes"} />)}</div>
         </div>)}
       </div>}
 
@@ -218,15 +218,15 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
   );
 }
 
-function TarjetaPublicacion({ pub, marca, draggable, onDragStart, onClick, compact = false }: {
-  pub: Publicacion; marca?: Marca; draggable: boolean; onDragStart: () => void; onClick: () => void; compact?: boolean;
+function TarjetaPublicacion({ pub, marca, responsable, draggable, onDragStart, onClick, compact = false }: {
+  pub: Publicacion; marca?: Marca; responsable?: PerfilOpcion; draggable: boolean; onDragStart: () => void; onClick: () => void; compact?: boolean;
 }) {
   const hora = new Date(pub.fecha_hora).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
   return <button type="button" draggable={draggable} onDragStart={onDragStart} onClick={onClick}
-    title={`${hora} · ${marca?.nombre || "Marca"} · ${pub.plataforma}`}
-    className={`w-full text-left rounded-md px-1.5 py-1 text-[10px] sm:text-xs truncate border-l-2 ${compact ? "" : "sm:py-1.5"} ${pub.estado === "publicado" ? "opacity-60" : ""}`}
+    title={`${hora} · ${marca?.nombre || "Marca"} · ${pub.plataforma} · ${responsable?.nombre_completo || "Sin responsable asignado"}`}
+    className={`w-full text-left rounded-md px-1.5 py-1 text-[10px] sm:text-xs border-l-2 ${compact ? "truncate" : "sm:py-1.5"} ${pub.estado === "publicado" ? "opacity-60" : ""}`}
     style={{ backgroundColor: `${marca?.color || "#3AA7A1"}22`, borderColor: marca?.color || "#3AA7A1" }}>
-    <span className="font-mono">{hora}</span>{!compact && <span className="hidden sm:inline"> · {marca?.nombre} · </span>}<span>{pub.plataforma}</span>{pub.estado === "publicado" && " ✓"}
+    <span className="font-mono">{hora}</span>{!compact && <span className="hidden sm:inline"> · {marca?.nombre} · </span>}<span>{pub.plataforma}</span>{!compact && <span className="block truncate text-[10px] opacity-75">{responsable?.nombre_completo || "Sin responsable"}</span>}{pub.estado === "publicado" && " ✓"}
   </button>;
 }
 
@@ -248,7 +248,17 @@ function EditorPublicacion({ publicacion, fechaBase, marcas, perfiles, guiones, 
         <label className="text-sm text-gray-400">Marca<select name="marca_id" required value={marcaId} onChange={(e) => { const nextId = e.target.value; setMarcaId(nextId); setPlataforma(marcas.find((m) => m.id === nextId)?.plataformas_activas[0] || ""); setGuionId(""); }} className="input-field mt-1">{marcas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label>
         <label className="text-sm text-gray-400">Plataforma<select name="plataforma" required value={plataforma} onChange={(e) => setPlataforma(e.target.value)} className="input-field mt-1">{marca?.plataformas_activas.map((p) => <option key={p}>{p}</option>)}</select></label>
         <label className="text-sm text-gray-400">Fecha y hora<input name="fecha_hora" type="datetime-local" required defaultValue={fechaInicial} className="input-field mt-1" /></label>
-        <label className="text-sm text-gray-400">Responsable de publicación<select name="responsable_id" defaultValue={publicacion?.responsable_id || ""} className="input-field mt-1"><option value="">Sin asignar</option>{perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre_completo}</option>)}</select></label>
+        <label className="text-sm text-gray-300 sm:col-span-2">
+          Responsable de publicación <span className="text-gray-500">(cualquier usuario activo)</span>
+          <select name="responsable_id" defaultValue={publicacion?.responsable_id || ""} className="input-field mt-1">
+            <option value="">Sin asignar — elegir después</option>
+            {perfiles.map((p) => <option key={p.id} value={p.id}>
+              {p.nombre_completo} · {p.departamento || p.role}
+            </option>)}
+          </select>
+          {perfiles.length === 0 && <span className="block text-xs text-signal-warn mt-1">No hay usuarios activos disponibles. Activa o crea usuarios en Administración → Roles y permisos.</span>}
+          {perfiles.length > 0 && <span className="block text-xs text-gray-500 mt-1">La persona asignada verá este contenido en «Para publicar» y podrá marcarlo como publicado.</span>}
+        </label>
         <label className="text-sm text-gray-400">Guion (opcional)<select name="guion_id" value={guionId} onChange={(e) => setGuionId(e.target.value)} className="input-field mt-1"><option value="">Sin guion</option>{opcionesGuion.map((g) => <option key={g.id} value={g.id}>{g.titulo}</option>)}</select></label>
         <label className="text-sm text-gray-400">Estado<select name="estado" defaultValue={publicacion?.estado || "pendiente"} className="input-field mt-1"><option value="pendiente">Pendiente</option><option value="publicado">Publicado</option><option value="cancelado">Cancelado</option></select></label>
       </div>
