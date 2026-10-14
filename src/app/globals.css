@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .marketing-guion-print,
+  .marketing-guion-print * {
+    visibility: visible !important;
+  }
+  .marketing-guion-print {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    color: #111 !important;
+    background: #fff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .marketing-guion-print textarea,
+  .marketing-guion-print input,
+  .marketing-guion-print select {
+    color: #111 !important;
+    background: #fff !important;
+    border-color: #bbb !important;
+  }
+  .marketing-print-hide {
+    display: none !important;
+  }
+}
+
 /* ============================================================
    BASE
    ============================================================ */

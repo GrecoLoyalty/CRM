@@ -8,9 +8,10 @@ import { NextResponse, type NextRequest } from "next/server";
 // la ficha de un cliente al que tiene acceso (RLS ya filtra los datos)
 // y ver su propia Vista de Águila.
 const RUTA_POR_ROL: Record<string, string[]> = {
-  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
-  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
-  analista: ["analisis", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
+  root: ["root", "ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron", "marketing"],
+  ceo: ["ceo", "ventas", "analisis", "estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron", "marketing"],
+  marketing: ["marketing", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
+  analista: ["analisis", "marketing", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
   vendedor: ["ventas", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
   produccion: ["estetica", "desarrollo", "cliente", "vista-aguila", "calendario", "tickets", "mis-tareas", "integraciones", "pizarron"],
 };
@@ -67,8 +68,10 @@ export async function middleware(request: NextRequest) {
     const seccion = path.split("/")[2]; // /dashboard/<seccion>
     if (seccion && perfil) {
       const permitido = RUTA_POR_ROL[perfil.role] || [];
+      const puedeAbrirPublicacionAsignada =
+        seccion === "marketing" && path === "/dashboard/marketing/para-publicar";
       const esPanelEjecutivoCompartido = path === "/dashboard/ceo";
-      if (!permitido.includes(seccion) && !esPanelEjecutivoCompartido) {
+      if (!permitido.includes(seccion) && !esPanelEjecutivoCompartido && !puedeAbrirPublicacionAsignada) {
         return NextResponse.redirect(new URL("/dashboard", request.url));
       }
     }

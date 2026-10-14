@@ -4,7 +4,7 @@ import { useState } from "react";
 import { actualizarRol, actualizarDepartamentosExtra, alternarActivo, eliminarUsuario } from "@/app/dashboard/root/actions";
 import type { Perfil } from "@/lib/types";
 
-const ROLES = ["root", "ceo", "analista", "vendedor", "produccion"];
+const ROLES = ["root", "ceo", "marketing", "analista", "vendedor", "produccion"];
 const DEPTOS = ["ventas", "analisis", "estetica", "desarrollo"];
 const SUBROLES = ["camarografo", "editor", "community_manager", "fullstack", "ia_ml", "qa"];
 

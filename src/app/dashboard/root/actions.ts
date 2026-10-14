@@ -73,6 +73,11 @@ export async function guardarConfiguracionEmpresa(formData: FormData) {
 
 export async function actualizarRol(perfilId: string, role: string, depto: string | null, subrol: string | null) {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+  const { data: miPerfil, error: errorPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (errorPerfil) throw new Error(errorPerfil.message);
+  if (miPerfil.role !== "root") throw new Error("Solo Root puede cambiar los roles.");
   const { error } = await supabase
     .from("perfiles")
     .update({ role, depto: depto || null, subrol: subrol || null })

@@ -1,4 +1,4 @@
-export type UserRole = "root" | "ceo" | "analista" | "vendedor" | "produccion";
+export type UserRole = "root" | "ceo" | "marketing" | "analista" | "vendedor" | "produccion";
 export type ProduccionSubrol = "camarografo" | "editor" | "community_manager" | "fullstack" | "ia_ml" | "qa";
 export type Depto = "ventas" | "analisis" | "estetica" | "desarrollo";
 

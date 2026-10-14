@@ -10,9 +10,13 @@ const DIA_A_DIA: Item[] = [
   { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "tareas" },
 ];
 
+const PARA_PUBLICAR: Item = { href: "/dashboard/marketing/para-publicar", label: "Para publicar", icon: "calendario" };
+const MARKETING: Item = { href: "/dashboard/marketing", label: "Estrategia de contenido", icon: "analisis" };
+
 const FLUJO: Item[] = [
   { href: "/dashboard/ventas", label: "Ventas", icon: "ventas", paso: 1 },
   { href: "/dashboard/analisis", label: "Análisis", icon: "analisis", paso: 2 },
+  MARKETING,
   { href: "/dashboard/estetica", label: "Estética Visual", icon: "estetica", paso: 3 },
   { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "desarrollo", paso: 4 },
 ];
@@ -34,23 +38,22 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
         { href: "/dashboard/root/empresa", label: "Empresa y reportes", icon: "aguila" },
       ],
     },
-    { titulo: "Día a día", items: DIA_A_DIA },
+    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
     { titulo: "Dirección", items: DIRECCION },
     { titulo: "Flujo de producción", items: FLUJO },
   ],
   ceo: [
     { titulo: "Dirección", items: DIRECCION },
-    { titulo: "Día a día", items: DIA_A_DIA },
+    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
     { titulo: "Flujo de producción", items: FLUJO },
   ],
   analista: [
-    {
-      items: [
-        { href: "/dashboard/analisis", label: "Análisis", icon: "analisis" },
-        VISTA_EJECUTIVA,
-      ],
-    },
-    { titulo: "Día a día", items: DIA_A_DIA },
+    { titulo: "Flujo de producción", items: [
+      { href: "/dashboard/analisis", label: "Análisis", icon: "analisis", paso: 2 },
+      MARKETING,
+    ] },
+    { items: [VISTA_EJECUTIVA] },
+    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
   ],
   vendedor: [
     {
@@ -59,7 +62,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
         VISTA_EJECUTIVA,
       ],
     },
-    { titulo: "Día a día", items: DIA_A_DIA },
+    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
   ],
   produccion: [
     {
@@ -69,12 +72,18 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
         VISTA_EJECUTIVA,
       ],
     },
-    { titulo: "Día a día", items: DIA_A_DIA },
+    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+  ],
+  marketing: [
+    { titulo: "Flujo de producción", items: [{ href: "/dashboard/analisis", label: "Análisis", icon: "analisis", paso: 2 }, MARKETING] },
+    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
   ],
 };
 
 /* Rutas que no están en el menú pero sí necesitan título en la cabecera */
 const TITULOS_EXTRA: { href: string; label: string }[] = [
+  { href: "/dashboard/marketing/para-publicar", label: "Para publicar" },
+  { href: "/dashboard/marketing", label: "Estrategia de contenido" },
   { href: "/dashboard/cliente", label: "Ficha de cliente" },
   { href: "/dashboard/vista-aguila", label: "Vista de Águila" },
   { href: "/dashboard", label: "Inicio" },

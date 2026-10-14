@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import ClienteAnalisisCard from "@/components/analisis/ClienteAnalisisCard";
+import Link from "next/link";
 
 export default async function AnalisisPage() {
   const supabase = createClient();
@@ -17,6 +18,15 @@ export default async function AnalisisPage() {
           Nodo central del flujo. Un error aquí se multiplica en todos los departamentos siguientes.
         </p>
       </div>
+
+      <Link href="/dashboard/marketing" className="card-link p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.14em] text-accent-soft">Logística y estrategia de contenido</p>
+          <h2 className="font-display font-semibold text-lg mt-1">Planeación de contenido por marca</h2>
+          <p className="text-sm text-gray-500 mt-1">Gestiona marcas, guiones, calendario editorial y responsables de publicación.</p>
+        </div>
+        <span className="btn-secondary shrink-0">Abrir planeación</span>
+      </Link>
 
       {(!clientes || clientes.length === 0) && (
         <div className="card p-8 text-center text-gray-500">No hay clientes esperando análisis por el momento.</div>
