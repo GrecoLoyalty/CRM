@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { eliminarPublicacion, guardarPublicacion, moverPublicacion } from "@/app/dashboard/marketing/actions";
 
-type Marca = { id: string; nombre: string; color: string; plataformas_activas: string[]; activa: boolean };
+type Marca = { id: string; nombre: string; color: string; plataformas_activas: string[]; activa: boolean; predeterminada: boolean };
 type PerfilOpcion = { id: string; nombre_completo: string; role: string; departamento: string };
 type GuionOpcion = { id: string; marca_id: string; titulo: string };
 type Publicacion = {
@@ -47,7 +47,10 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
 }) {
   const [fecha, setFecha] = useState(() => diaLocal(new Date()));
   const [vista, setVista] = useState<Vista>("mes");
-  const [filtroMarca, setFiltroMarca] = useState("");
+  const [filtroMarca, setFiltroMarca] = useState(() => {
+    const activas = marcas.filter((marca) => marca.activa);
+    return activas.find((marca) => marca.predeterminada)?.id || (activas.length === 1 ? activas[0].id : "");
+  });
   const [filtroPlataforma, setFiltroPlataforma] = useState("");
   const [filtroResponsable, setFiltroResponsable] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");

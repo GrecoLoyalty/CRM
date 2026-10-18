@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { cambiarEstadoMarca, eliminarMarca, guardarMarca } from "@/app/dashboard/marketing/actions";
+import { cambiarEstadoMarca, eliminarMarca, establecerMarcaPredeterminada, guardarMarca } from "@/app/dashboard/marketing/actions";
 
 const PLATAFORMAS = ["Instagram", "TikTok", "YouTube", "Facebook", "LinkedIn", "X"];
 type Marca = {
@@ -12,14 +13,17 @@ type Marca = {
   color: string;
   plataformas_activas: string[];
   activa: boolean;
+  predeterminada: boolean;
 };
 type Cliente = { id: string; nombre_empresa: string; foto_url: string | null };
 
 export default function MarcasPanel({ marcas, clientes }: { marcas: Marca[]; clientes: Cliente[] }) {
+  const router = useRouter();
   const [editando, setEditando] = useState<Marca | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [estableciendoPredeterminada, setEstableciendoPredeterminada] = useState<string | null>(null);
   const plataformasDisponibles = [...new Set([
     ...PLATAFORMAS,
     ...(editando?.plataformas_activas || []),
@@ -55,6 +59,19 @@ export default function MarcasPanel({ marcas, clientes }: { marcas: Marca[]; cli
       await cambiarEstadoMarca(marca.id, !marca.activa);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo actualizar la marca.");
+    }
+  }
+
+  async function establecerPredeterminada(marca: Marca) {
+    setError("");
+    setEstableciendoPredeterminada(marca.id);
+    try {
+      await establecerMarcaPredeterminada(marca.id);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo establecer la marca predeterminada.");
+    } finally {
+      setEstableciendoPredeterminada(null);
     }
   }
 
@@ -99,6 +116,7 @@ export default function MarcasPanel({ marcas, clientes }: { marcas: Marca[]; cli
                     {clientes.find((cliente) => cliente.id === marca.cliente_id)?.nombre_empresa || "Marca independiente"}
                   </p>
                   <p className="text-xs text-gray-500">{marca.activa ? "Activa" : "Archivada"}</p>
+                  {marca.predeterminada && <span className="badge badge-accent mt-1">Predeterminada</span>}
                 </div>
                 <span className="ml-auto w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: marca.color }} />
               </div>
@@ -113,6 +131,15 @@ export default function MarcasPanel({ marcas, clientes }: { marcas: Marca[]; cli
                 <button className="btn-ghost" onClick={() => alternar(marca)}>
                   {marca.activa ? "Archivar" : "Reactivar"}
                 </button>
+                {marca.activa && !marca.predeterminada && (
+                  <button
+                    className="btn-ghost text-accent-soft"
+                    onClick={() => establecerPredeterminada(marca)}
+                    disabled={estableciendoPredeterminada !== null}
+                  >
+                    {estableciendoPredeterminada === marca.id ? "Guardando…" : "Usar por defecto"}
+                  </button>
+                )}
                 <button className="btn-ghost text-signal-urgent" onClick={() => borrar(marca)}>Eliminar</button>
               </div>
             </article>

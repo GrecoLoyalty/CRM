@@ -4,7 +4,7 @@ import CalendarioMarketing from "@/components/marketing/CalendarioMarketing";
 export default async function CalendarioMarketingPage() {
   const supabase = createClient();
   const [{ data: marcas, error: errorMarcas }, { data: perfiles, error: errorPerfiles }, { data: guiones, error: errorGuiones }, { data: publicaciones, error: errorPublicaciones }] = await Promise.all([
-    supabase.from("marcas").select("id, nombre, color, plataformas_activas, activa").order("nombre"),
+    supabase.from("marcas").select("id, nombre, color, plataformas_activas, activa, predeterminada").order("nombre"),
     supabase.rpc("fn_usuarios_asignables_marketing"),
     supabase.from("guiones").select("id, marca_id, titulo").order("titulo"),
     supabase.from("publicaciones").select("*").order("fecha_hora"),

@@ -106,6 +106,13 @@ export async function cambiarEstadoMarca(id: string, activa: boolean) {
   invalidarMarketing();
 }
 
+export async function establecerMarcaPredeterminada(id: string) {
+  const { supabase } = await clienteConPermisoMarketing();
+  const { error } = await supabase.rpc("fn_establecer_marca_predeterminada", { p_marca_id: id });
+  if (error) throw new Error(error.message);
+  invalidarMarketing();
+}
+
 export async function eliminarMarca(id: string) {
   const { supabase } = await clienteConPermisoMarketing();
   const [{ data: guiones, error: errorGuiones }, { data: publicaciones, error: errorPublicaciones }] = await Promise.all([

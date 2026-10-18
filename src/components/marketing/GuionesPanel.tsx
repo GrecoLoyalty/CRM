@@ -10,13 +10,16 @@ type Guion = {
   notas_grabacion: string; estado: "borrador" | "en_revision" | "aprobado" | "grabado";
   guion_escenas: (Escena & { id: string; orden: number })[];
 };
-type Marca = { id: string; nombre: string; color: string; plataformas_activas: string[]; activa: boolean };
+type Marca = { id: string; nombre: string; color: string; plataformas_activas: string[]; activa: boolean; predeterminada: boolean };
 const ESTADOS = ["borrador", "en_revision", "aprobado", "grabado"] as const;
 
 export default function GuionesPanel({ guiones, marcas }: { guiones: Guion[]; marcas: Marca[] }) {
   const [seleccionado, setSeleccionado] = useState<Guion | null>(null);
   const [abierto, setAbierto] = useState(false);
-  const [filtroMarca, setFiltroMarca] = useState("");
+  const [filtroMarca, setFiltroMarca] = useState(() => {
+    const activas = marcas.filter((marca) => marca.activa);
+    return activas.find((marca) => marca.predeterminada)?.id || (activas.length === 1 ? activas[0].id : "");
+  });
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
