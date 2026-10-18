@@ -66,6 +66,7 @@ export default function EmpresaReportes({
   configuracion: ConfiguracionEmpresa | null;
   movimientos: MovimientoReporte[];
 }) {
+  const [edicionAbierta, setEdicionAbierta] = useState(false);
   const [guardando, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
   const moneda = "MXN";
@@ -88,6 +89,7 @@ export default function EmpresaReportes({
       try {
         await guardarConfiguracionEmpresa(formData);
         setMensaje("Información guardada.");
+        setEdicionAbierta(false);
       } catch (error) {
         setMensaje(error instanceof Error ? error.message : "No se pudo guardar la información.");
       }
@@ -110,46 +112,76 @@ export default function EmpresaReportes({
   return (
     <div className="space-y-6">
       <section className="card p-5">
-        <div className="mb-4">
-          <h2 className="font-display font-semibold">Información de la empresa</h2>
-          <p className="mt-1 text-sm text-gray-500">Los supuestos se usan para estimaciones de gestión, no sustituyen la contabilidad fiscal.</p>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display font-semibold">Información de la empresa</h2>
+            <p className="mt-1 text-sm text-gray-500">Perfil y supuestos para estimaciones de gestión.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEdicionAbierta((abierta) => !abierta)}
+            aria-expanded={edicionAbierta}
+            aria-controls="empresa-edicion"
+            className="btn-secondary"
+          >
+            {edicionAbierta ? "Cerrar edición" : "Editar información"}
+          </button>
         </div>
-        <form action={guardar} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {CAMPOS_CONFIG.map((campo) => (
-            <div key={campo.name} className={campo.name === "direccion" ? "sm:col-span-2 lg:col-span-3" : ""}>
-              <label htmlFor={campo.name} className="label-field">{campo.label}</label>
-              <input
-                id={campo.name}
-                name={campo.name}
-                type={campo.type || "text"}
-                defaultValue={configuracion?.[campo.name] || ""}
-                required={campo.name === "nombre_empresa"}
-                className="input-field"
-              />
+        {!edicionAbierta ? (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {CAMPOS_CONFIG.map((campo) => (
+                <div key={campo.name} className="min-w-0">
+                  <dt className="text-xs text-gray-500">{campo.label}</dt>
+                  <dd className="mt-1 truncate text-sm text-gray-200">{configuracion?.[campo.name] || "—"}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="grid grid-cols-2 gap-3 border-t border-base-700 pt-4 sm:grid-cols-4">
+              <DatoEmpresa etiqueta="Moneda de reportes" valor="MXN — Peso mexicano" />
+              <DatoEmpresa etiqueta="Costos fijos mensuales" valor={formato.format(Number(configuracion?.costos_fijos_mensuales || 0))} />
+              <DatoEmpresa etiqueta="Costos variables" valor={`${Number(configuracion?.costos_variables_pct || 0)}% de ingresos`} />
+              <DatoEmpresa etiqueta="Reserva fiscal estimada" valor={`${Number(configuracion?.tasa_impuestos_pct || 0)}%`} />
             </div>
-          ))}
-          <input type="hidden" name="moneda" value="MXN" />
-          <div>
-            <span className="label-field">Moneda de reportes</span>
-            <p className="input-field flex items-center text-gray-400">MXN — Peso mexicano</p>
           </div>
-          <div>
-            <label htmlFor="costos_fijos_mensuales" className="label-field">Costos fijos mensuales</label>
-            <input id="costos_fijos_mensuales" name="costos_fijos_mensuales" type="number" min="0" step="0.01" defaultValue={configuracion?.costos_fijos_mensuales || 0} required className="input-field" />
-          </div>
-          <div>
-            <label htmlFor="costos_variables_pct" className="label-field">Costos variables (% de ingresos)</label>
-            <input id="costos_variables_pct" name="costos_variables_pct" type="number" min="0" max="99.99" step="0.01" defaultValue={configuracion?.costos_variables_pct || 0} required className="input-field" />
-          </div>
-          <div>
-            <label htmlFor="tasa_impuestos_pct" className="label-field">Tasa para reserva fiscal estimada (%)</label>
-            <input id="tasa_impuestos_pct" name="tasa_impuestos_pct" type="number" min="0" max="100" step="0.01" defaultValue={configuracion?.tasa_impuestos_pct || 0} required className="input-field" />
-          </div>
-          <div className="flex items-end">
-            <button type="submit" disabled={guardando} className="btn-primary w-full">{guardando ? "Guardando..." : "Guardar información"}</button>
-          </div>
-          {mensaje && <p role="status" className="text-sm text-gray-300 sm:col-span-2 lg:col-span-3">{mensaje}</p>}
-        </form>
+        ) : (
+          <form id="empresa-edicion" action={guardar} className="grid grid-cols-1 gap-3 border-t border-base-700 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+            {CAMPOS_CONFIG.map((campo) => (
+              <div key={campo.name} className={campo.name === "direccion" ? "sm:col-span-2 lg:col-span-3" : ""}>
+                <label htmlFor={campo.name} className="label-field">{campo.label}</label>
+                <input
+                  id={campo.name}
+                  name={campo.name}
+                  type={campo.type || "text"}
+                  defaultValue={configuracion?.[campo.name] || ""}
+                  required={campo.name === "nombre_empresa"}
+                  className="input-field"
+                />
+              </div>
+            ))}
+            <input type="hidden" name="moneda" value="MXN" />
+            <div>
+              <span className="label-field">Moneda de reportes</span>
+              <p className="input-field flex items-center text-gray-400">MXN — Peso mexicano</p>
+            </div>
+            <div>
+              <label htmlFor="costos_fijos_mensuales" className="label-field">Costos fijos mensuales</label>
+              <input id="costos_fijos_mensuales" name="costos_fijos_mensuales" type="number" min="0" step="0.01" defaultValue={configuracion?.costos_fijos_mensuales || 0} required className="input-field" />
+            </div>
+            <div>
+              <label htmlFor="costos_variables_pct" className="label-field">Costos variables (% de ingresos)</label>
+              <input id="costos_variables_pct" name="costos_variables_pct" type="number" min="0" max="99.99" step="0.01" defaultValue={configuracion?.costos_variables_pct || 0} required className="input-field" />
+            </div>
+            <div>
+              <label htmlFor="tasa_impuestos_pct" className="label-field">Tasa para reserva fiscal estimada (%)</label>
+              <input id="tasa_impuestos_pct" name="tasa_impuestos_pct" type="number" min="0" max="100" step="0.01" defaultValue={configuracion?.tasa_impuestos_pct || 0} required className="input-field" />
+            </div>
+            <div className="flex items-end">
+              <button type="submit" disabled={guardando} className="btn-primary w-full">{guardando ? "Guardando..." : "Guardar información"}</button>
+            </div>
+          </form>
+        )}
+        {mensaje && <p role="status" className="mt-3 text-sm text-gray-300">{mensaje}</p>}
       </section>
 
       <section className="space-y-4">
@@ -198,6 +230,15 @@ export default function EmpresaReportes({
         </div>
         <p className="text-xs text-gray-600">Resultado = ingresos registrados − egresos registrados. Punto de equilibrio = costos fijos ÷ (1 − costos variables %). La reserva fiscal es una estimación aplicada al resultado positivo del mes actual.</p>
       </section>
+    </div>
+  );
+}
+
+function DatoEmpresa({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-gray-500">{etiqueta}</p>
+      <p className="mt-1 truncate text-sm text-gray-200">{valor}</p>
     </div>
   );
 }
