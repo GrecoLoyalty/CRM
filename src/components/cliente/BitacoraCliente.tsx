@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { eliminarEntradaBitacora } from "@/app/dashboard/cliente/actions";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -23,10 +24,12 @@ export default function BitacoraCliente({
   clienteId,
   userId,
   entradasIniciales,
+  puedeEliminar,
 }: {
   clienteId: string;
   userId: string;
   entradasIniciales: any[];
+  puedeEliminar: boolean;
 }) {
   const [entradas, setEntradas] = useState(entradasIniciales);
   const [contenido, setContenido] = useState("");
@@ -34,6 +37,8 @@ export default function BitacoraCliente({
   const [miPerfil, setMiPerfil] = useState<{ nombre_completo: string; depto: string | null } | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [montado, setMontado] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -75,6 +80,20 @@ export default function BitacoraCliente({
     setEnviando(false);
   }
 
+  async function eliminar(id: string) {
+    if (!window.confirm("¿Eliminar permanentemente esta entrada de la bitácora? Esta acción no se puede deshacer.")) return;
+    setError(null);
+    setEliminandoId(id);
+    try {
+      await eliminarEntradaBitacora(clienteId, id);
+      setEntradas((actuales) => actuales.filter((entrada) => entrada.id !== id));
+    } catch (e: any) {
+      setError(e.message || "No se pudo eliminar la entrada.");
+    } finally {
+      setEliminandoId(null);
+    }
+  }
+
   return (
     <section className="card p-5">
       <h2 className="font-display font-semibold text-sm text-gray-400 uppercase tracking-wide mb-1">Bitácora del cliente</h2>
@@ -84,12 +103,23 @@ export default function BitacoraCliente({
         {entradas.length === 0 && <p className="text-sm text-gray-500">Aún no hay entradas. Sé el primero en dejar una nota.</p>}
         {entradas.map((e) => (
           <div key={e.id} className="border-b border-base-700 pb-3 last:border-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium">{e.autor_nombre}</span>
-              {e.depto && <span className={`text-[10px] px-2 py-0.5 rounded-full ${DEPTO_COLOR[e.depto]}`}>{DEPTO_LABEL[e.depto]}</span>}
-              <span className="text-[10px] text-gray-600">
-                {montado ? formatDistanceToNow(new Date(e.created_at), { addSuffix: true, locale: es }) : ""}
-              </span>
+            <div className="flex justify-between items-start gap-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium">{e.autor_nombre}</span>
+                {e.depto && <span className={`text-[10px] px-2 py-0.5 rounded-full ${DEPTO_COLOR[e.depto]}`}>{DEPTO_LABEL[e.depto]}</span>}
+                <span className="text-[10px] text-gray-600">
+                  {montado ? formatDistanceToNow(new Date(e.created_at), { addSuffix: true, locale: es }) : ""}
+                </span>
+              </div>
+              {puedeEliminar && (
+                <button
+                  onClick={() => eliminar(e.id)}
+                  disabled={eliminandoId === e.id}
+                  className="text-[10px] text-signal-urgent hover:underline shrink-0 disabled:opacity-50"
+                >
+                  {eliminandoId === e.id ? "Eliminando..." : "Eliminar"}
+                </button>
+              )}
             </div>
             <p className="text-sm text-gray-300 whitespace-pre-wrap">{e.contenido}</p>
             {e.link && (
@@ -100,6 +130,7 @@ export default function BitacoraCliente({
           </div>
         ))}
       </div>
+      {error && <p className="text-xs text-signal-urgent mb-3">{error}</p>}
 
       <div className="border-t border-base-600 pt-4 space-y-2">
         <textarea

@@ -15,6 +15,42 @@ export async function actualizarEstadoTarea(tareaId: string, nuevoEstado: Estado
   revalidatePath(path || "/dashboard");
 }
 
+export async function eliminarTareaEstetica(tareaId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { data: perfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (perfil?.role !== "root") return { error: "Solo Root puede eliminar tareas de Estética Visual." };
+
+  const { data: tarea, error: errorTarea } = await supabase
+    .from("tareas")
+    .select("cliente_id")
+    .eq("id", tareaId)
+    .eq("depto", "estetica")
+    .maybeSingle();
+  if (errorTarea) return { error: errorTarea.message };
+  if (!tarea) return { error: "No se encontró la tarea de Estética Visual." };
+
+  const { data: eliminada, error } = await supabase
+    .from("tareas")
+    .delete()
+    .eq("id", tareaId)
+    .eq("depto", "estetica")
+    .select("id")
+    .maybeSingle();
+  if (error) return { error: error.message };
+  if (!eliminada) return { error: "No se pudo eliminar la tarea." };
+
+  revalidatePath("/dashboard/estetica");
+  revalidatePath("/dashboard/mis-tareas");
+  revalidatePath("/dashboard/ceo/tareas");
+  if (tarea.cliente_id) revalidatePath(`/dashboard/cliente/${tarea.cliente_id}`);
+  return { error: null };
+}
+
 // Ping de actividad — llamado cada 60s desde el navegador mientras hay interacción
 // (mousemove/keypress/scroll) para calcular Tiempo Activo Real vs Tiempo Total Abierta.
 export async function pingActividad(tareaId: string) {

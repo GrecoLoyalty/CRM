@@ -224,7 +224,7 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
       />
 
       {/* Bitácora compartida — aquí es donde cualquier depto deja su nota/link */}
-      <BitacoraCliente clienteId={cliente.id} userId={user!.id} entradasIniciales={bitacora || []} />
+      <BitacoraCliente clienteId={cliente.id} userId={user!.id} entradasIniciales={bitacora || []} puedeEliminar={miPerfil?.role === "root"} />
     </div>
   );
 }

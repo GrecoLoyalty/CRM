@@ -62,7 +62,13 @@ export default async function EsteticaPage() {
 
       <div className="space-y-3">
         {tareas?.map((t) => (
-          <CadenaEsteticaTarea key={t.id} tarea={t} cliente={t.cliente} siguienteAccion={SIGUIENTE_ESTADO[t.subrol_requerido as string]} />
+          <CadenaEsteticaTarea
+            key={t.id}
+            tarea={t}
+            cliente={t.cliente}
+            siguienteAccion={SIGUIENTE_ESTADO[t.subrol_requerido as string]}
+            puedeEliminar={perfil?.role === "root"}
+          />
         ))}
       </div>
     </div>

@@ -8,6 +8,7 @@ export default async function TicketDetallePage({ params }: { params: { id: stri
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: perfil } = await supabase.from("perfiles").select("role").eq("id", user!.id).single();
 
   const { data: ticket } = await supabase
     .from("tickets")
@@ -41,6 +42,7 @@ export default async function TicketDetallePage({ params }: { params: { id: stri
         comentariosIniciales={(comentariosRaw || []) as any}
         perfiles={perfiles || []}
         userId={user!.id}
+        userRole={perfil?.role || ""}
       />
     </div>
   );

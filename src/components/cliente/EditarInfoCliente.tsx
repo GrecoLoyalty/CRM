@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { actualizarInfoCliente } from "@/app/dashboard/cliente/actions";
+import { useRouter } from "next/navigation";
+import { actualizarInfoCliente, eliminarNotaInternaCliente } from "@/app/dashboard/cliente/actions";
 
 interface GiroOpcion {
   id: string;
@@ -28,6 +29,7 @@ export default function EditarInfoCliente({
     notas_internas: string | null;
   };
 }) {
+  const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState(datosIniciales);
   const [pending, startTransition] = useTransition();
@@ -49,6 +51,20 @@ export default function EditarInfoCliente({
     });
   }
 
+  function eliminarNota() {
+    if (!window.confirm("¿Eliminar permanentemente las notas internas de este cliente? Esta acción no se puede deshacer.")) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await eliminarNotaInternaCliente(clienteId);
+        setForm((prev) => ({ ...prev, notas_internas: null }));
+        router.refresh();
+      } catch (e: any) {
+        setError(e.message || "No se pudieron eliminar las notas.");
+      }
+    });
+  }
+
   if (!puedeEditar) return null; // Solo Root/CEO ven esta sección — el resto ve los datos en las secciones normales de la ficha.
 
   return (
@@ -63,9 +79,17 @@ export default function EditarInfoCliente({
       </div>
 
       {!editando ? (
-        <p className="text-xs text-gray-500">
-          Datos de contacto, giro, presupuesto y notas internas. Click en &quot;Editar&quot; para modificarlos.
-        </p>
+        <div>
+          <p className="text-xs text-gray-500">
+            Datos de contacto, giro, presupuesto y notas internas. Click en &quot;Editar&quot; para modificarlos.
+          </p>
+          {form.notas_internas && (
+            <button onClick={eliminarNota} disabled={pending} className="text-xs text-signal-urgent hover:underline mt-2 disabled:opacity-50">
+              {pending ? "Eliminando..." : "Eliminar notas internas"}
+            </button>
+          )}
+          {error && <p className="text-xs text-signal-urgent mt-2">{error}</p>}
+        </div>
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

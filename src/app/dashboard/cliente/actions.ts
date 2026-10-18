@@ -104,3 +104,53 @@ export async function actualizarInfoCliente(
   revalidatePath(`/dashboard/cliente/${clienteId}`);
   revalidatePath("/dashboard/root/clientes");
 }
+
+export async function eliminarNotaInternaCliente(clienteId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (miPerfil?.role !== "root" && miPerfil?.role !== "ceo") {
+    throw new Error("Solo Root o CEO pueden eliminar las notas internas.");
+  }
+
+  const { data, error } = await supabase
+    .from("clientes")
+    .update({ notas_internas: null })
+    .eq("id", clienteId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("No se encontró el cliente o no tienes permiso para editarlo.");
+
+  revalidatePath(`/dashboard/cliente/${clienteId}`);
+  revalidatePath("/dashboard/root/clientes");
+}
+
+export async function eliminarEntradaBitacora(clienteId: string, entradaId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (miPerfil?.role !== "root") {
+    throw new Error("Solo Root puede eliminar entradas de la bitácora.");
+  }
+
+  const { data, error } = await supabase
+    .from("cliente_bitacora")
+    .delete()
+    .eq("id", entradaId)
+    .eq("cliente_id", clienteId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("No se encontró la entrada o no tienes permiso para eliminarla.");
+
+  revalidatePath(`/dashboard/cliente/${clienteId}`);
+}

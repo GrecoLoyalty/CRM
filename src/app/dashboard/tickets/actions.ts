@@ -197,6 +197,45 @@ export async function cambiarEstadoTicket(
   }
 }
 
+export async function eliminarTicket(ticketId: string): Promise<{ error: string | null }> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
+    const [{ data: perfil }, { data: ticket, error: errorTicket }] = await Promise.all([
+      supabase.from("perfiles").select("role").eq("id", user.id).single(),
+      supabase.from("tickets").select("creado_por, estado").eq("id", ticketId).maybeSingle(),
+    ]);
+    if (errorTicket) return { error: errorTicket.message };
+    if (!ticket) return { error: "No se encontró el ticket o no tienes acceso." };
+
+    const esRoot = perfil?.role === "root";
+    const esCreadorConTicketAbierto = ticket.creado_por === user.id && ticket.estado === "abierto";
+    if (!esRoot && !esCreadorConTicketAbierto) {
+      return { error: "Solo Root o quien creó el ticket puede eliminarlo mientras siga abierto." };
+    }
+
+    const { data: eliminado, error } = await supabase
+      .from("tickets")
+      .delete()
+      .eq("id", ticketId)
+      .select("id")
+      .maybeSingle();
+    if (error) return { error: error.message };
+    if (!eliminado) return { error: "No se pudo eliminar el ticket." };
+
+    revalidatePath("/dashboard/tickets");
+    revalidatePath(`/dashboard/tickets/${ticketId}`);
+    return { error: null };
+  } catch (err: any) {
+    console.error("[tickets] eliminarTicket falló:", err?.message || err);
+    return { error: err?.message || "No se pudo eliminar el ticket. Intenta de nuevo." };
+  }
+}
+
 export async function reasignarTicket(ticketId: string, nuevoAsignadoId: string): Promise<{ error: string | null }> {
   try {
     const supabase = createClient();

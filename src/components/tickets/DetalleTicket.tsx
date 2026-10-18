@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
-import { tomarTicket, cambiarEstadoTicket, comentarTicket } from "@/app/dashboard/tickets/actions";
+import { tomarTicket, cambiarEstadoTicket, comentarTicket, eliminarTicket } from "@/app/dashboard/tickets/actions";
 import { PRIORIDAD_LABEL, PRIORIDAD_COLOR, ESTADO_TICKET_LABEL, ESTADO_TICKET_COLOR, DEPTO_LABEL, type Depto } from "@/lib/types";
 
 export default function DetalleTicket({
@@ -13,13 +14,16 @@ export default function DetalleTicket({
   comentariosIniciales,
   perfiles,
   userId,
+  userRole,
 }: {
   ticket: any;
   destinatarios: any[];
   comentariosIniciales: any[];
   perfiles: { id: string; nombre_completo: string }[];
   userId: string;
+  userRole: string;
 }) {
+  const router = useRouter();
   const [comentarios, setComentarios] = useState(comentariosIniciales);
   const [mensaje, setMensaje] = useState("");
   const [pending, startTransition] = useTransition();
@@ -60,6 +64,21 @@ export default function DetalleTicket({
       return resultado;
     });
   }
+
+  function borrarTicket() {
+    if (!window.confirm(`¿Eliminar permanentemente el ticket "${ticket.titulo}" y todos sus comentarios? Esta acción no se puede deshacer.`)) return;
+    setError(null);
+    startTransition(async () => {
+      const resultado = await eliminarTicket(ticket.id);
+      if (resultado.error) {
+        setError(resultado.error);
+        return;
+      }
+      router.push("/dashboard/tickets");
+    });
+  }
+
+  const puedeEliminar = userRole === "root" || (ticket.creado_por === userId && ticket.estado === "abierto");
 
   return (
     <div className="space-y-4">
@@ -129,6 +148,11 @@ export default function DetalleTicket({
           {(ticket.estado === "resuelto" || ticket.estado === "cerrado") && (
             <button onClick={() => accion(() => cambiarEstadoTicket(ticket.id, "abierto"))} disabled={pending} className="text-sm text-gray-500 hover:text-gray-300 underline">
               Reabrir
+            </button>
+          )}
+          {puedeEliminar && (
+            <button onClick={borrarTicket} disabled={pending} className="text-sm text-signal-urgent hover:underline disabled:opacity-50">
+              Eliminar permanentemente
             </button>
           )}
         </div>
