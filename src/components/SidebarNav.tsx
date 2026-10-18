@@ -80,47 +80,74 @@ export default function SidebarNav({
             <div className="space-y-0.5">
               {grupo.items.map((item) => {
                 const esActivo = activo === item.href;
+                const submenuAbierto = item.children?.some((child) =>
+                  pathname === child.href || pathname?.startsWith(child.href + "/")
+                ) || pathname === item.href;
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    aria-current={esActivo ? "page" : undefined}
-                    className={clsx(
-                      "relative flex items-center gap-2.5 pl-3 pr-2.5 py-2 rounded-lg text-sm",
-                      "transition-colors duration-200",
-                      esActivo
-                        ? "bg-accent/12 text-accent-soft font-medium"
-                        : "text-gray-400 hover:bg-base-750 hover:text-gray-100"
-                    )}
-                  >
-                    {/* Filo neón del elemento activo */}
-                    {esActivo && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full
-                                   bg-accent-neon shadow-glow-cyan"
-                      />
-                    )}
-                    <Icon
-                      name={item.icon}
+                  <div key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={onNavigate}
+                      aria-current={esActivo ? "page" : undefined}
+                      aria-expanded={item.children ? submenuAbierto : undefined}
                       className={clsx(
-                        "w-[18px] h-[18px] shrink-0 transition-colors duration-200",
-                        esActivo ? "text-accent-neon" : "text-gray-600"
+                        "relative flex items-center gap-2.5 pl-3 pr-2.5 py-2 rounded-lg text-sm",
+                        "transition-colors duration-200",
+                        esActivo
+                          ? "bg-accent/12 text-accent-soft font-medium"
+                          : "text-gray-400 hover:bg-base-750 hover:text-gray-100"
                       )}
-                    />
-                    <span className="truncar flex-1">{item.label}</span>
-                    {item.paso && (
-                      <span
+                    >
+                      {esActivo && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full
+                                     bg-accent-neon shadow-glow-cyan"
+                        />
+                      )}
+                      <Icon
+                        name={item.icon}
                         className={clsx(
-                          "font-mono text-[10px] tabular-nums shrink-0",
-                          esActivo ? "text-accent-soft/80" : "text-gray-700"
+                          "w-[18px] h-[18px] shrink-0 transition-colors duration-200",
+                          esActivo ? "text-accent-neon" : "text-gray-600"
                         )}
-                      >
-                        {item.paso}
-                      </span>
+                      />
+                      <span className="truncar flex-1">{item.label}</span>
+                      {item.paso && (
+                        <span
+                          className={clsx(
+                            "font-mono text-[10px] tabular-nums shrink-0",
+                            esActivo ? "text-accent-soft/80" : "text-gray-700"
+                          )}
+                        >
+                          {item.paso}
+                        </span>
+                      )}
+                    </Link>
+                    {submenuAbierto && item.children && (
+                      <div className="ml-5 mt-0.5 border-l border-base-600 pl-2 space-y-0.5">
+                        {item.children.map((child) => {
+                          const esHijoActivo = activo === child.href;
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={onNavigate}
+                              aria-current={esHijoActivo ? "page" : undefined}
+                              className={clsx(
+                                "block rounded-lg px-2.5 py-1.5 text-xs transition-colors",
+                                esHijoActivo
+                                  ? "text-accent-soft font-medium"
+                                  : "text-gray-500 hover:bg-base-750 hover:text-gray-100"
+                              )}
+                            >
+                              {child.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     )}
-                  </Link>
+                  </div>
                 );
               })}
             </div>

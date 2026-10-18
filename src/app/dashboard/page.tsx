@@ -5,9 +5,9 @@ const DESTINO_POR_ROL: Record<string, string> = {
   root: "/dashboard/root",
   ceo: "/dashboard/ceo",
   marketing: "/dashboard/marketing",
-  analista: "/dashboard/ceo",
-  vendedor: "/dashboard/ceo",
-  produccion: "/dashboard/ceo",
+  analista: "/dashboard/analisis",
+  vendedor: "/dashboard/ventas",
+  produccion: "/dashboard/estetica",
 };
 
 export default async function DashboardIndex() {

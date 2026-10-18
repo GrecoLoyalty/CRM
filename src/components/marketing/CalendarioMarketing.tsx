@@ -12,6 +12,12 @@ type Publicacion = {
   responsable_id: string | null; video_url: string | null; descarga_url: string | null; publicacion_url: string | null;
 };
 type Vista = "mes" | "semana" | "lista";
+const PLATAFORMAS_PUBLICACION = ["Instagram", "Facebook", "TikTok", "Email-marketing"] as const;
+const OTROS = "Otros";
+
+function esPlataformaPredefinida(value: string | undefined): boolean {
+  return !!value && (PLATAFORMAS_PUBLICACION as readonly string[]).includes(value);
+}
 
 function diaLocal(date: Date) {
   const d = new Date(date);
@@ -97,13 +103,17 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
     setModal(true);
   }
   async function guardar(form: FormData) {
+    const plataformaSeleccionada = String(form.get("plataforma") || "");
+    const plataforma = plataformaSeleccionada === OTROS
+      ? String(form.get("plataforma_personalizada") || "").trim()
+      : plataformaSeleccionada;
     setOcupado(true);
     setError("");
     try {
       await guardarPublicacion({
         id: seleccionado?.id,
         marca_id: String(form.get("marca_id")),
-        plataforma: String(form.get("plataforma")),
+        plataforma,
         fecha_hora: String(form.get("fecha_hora")),
         guion_id: String(form.get("guion_id") || "") || null,
         caption: String(form.get("caption") || ""),
@@ -238,15 +248,41 @@ function EditorPublicacion({ publicacion, fechaBase, marcas, perfiles, guiones, 
   const [marcaId, setMarcaId] = useState(publicacion?.marca_id || marcas[0]?.id || "");
   const marca = marcas.find((m) => m.id === marcaId);
   const opcionesGuion = guiones.filter((g) => g.marca_id === marcaId);
-  const [plataforma, setPlataforma] = useState(publicacion?.plataforma || marca?.plataformas_activas[0] || "");
+  const plataformaExistentePredefinida = esPlataformaPredefinida(publicacion?.plataforma);
+  const [plataforma, setPlataforma] = useState(
+    publicacion ? (plataformaExistentePredefinida ? publicacion.plataforma : OTROS) : PLATAFORMAS_PUBLICACION[0]
+  );
+  const [plataformaPersonalizada, setPlataformaPersonalizada] = useState(
+    publicacion && !plataformaExistentePredefinida ? publicacion.plataforma : ""
+  );
   const [guionId, setGuionId] = useState(publicacion?.guion_id || "");
+  const plataformasAdicionales = marca?.plataformas_activas.filter(
+    (plataformaActiva) => !esPlataformaPredefinida(plataformaActiva)
+  ) || [];
+  const plataformasDisponibles = [...new Set([...PLATAFORMAS_PUBLICACION, ...plataformasAdicionales, OTROS])];
   const fechaInicial = publicacion ? datetimeLocal(publicacion.fecha_hora) : `${fechaLocal(fechaBase)}T12:00`;
   return <div className="fixed inset-0 z-50 bg-base-950/80 flex items-center justify-center p-3" onMouseDown={(e) => { if (e.target === e.currentTarget) cerrar(); }}>
     <form action={guardar} className="card w-full max-w-2xl p-5 space-y-4 max-h-[94vh] overflow-y-auto">
       <div className="flex justify-between"><h3 className="font-display text-lg font-semibold">{publicacion ? "Editar publicación" : "Programar publicación"}</h3><button type="button" className="btn-ghost" onClick={cerrar}>Cerrar</button></div>
       <div className="grid sm:grid-cols-2 gap-3">
-        <label className="text-sm text-gray-400">Marca<select name="marca_id" required value={marcaId} onChange={(e) => { const nextId = e.target.value; setMarcaId(nextId); setPlataforma(marcas.find((m) => m.id === nextId)?.plataformas_activas[0] || ""); setGuionId(""); }} className="input-field mt-1">{marcas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label>
-        <label className="text-sm text-gray-400">Plataforma<select name="plataforma" required value={plataforma} onChange={(e) => setPlataforma(e.target.value)} className="input-field mt-1">{marca?.plataformas_activas.map((p) => <option key={p}>{p}</option>)}</select></label>
+        <label className="text-sm text-gray-400">Marca<select name="marca_id" required value={marcaId} onChange={(e) => { setMarcaId(e.target.value); setPlataforma(PLATAFORMAS_PUBLICACION[0]); setPlataformaPersonalizada(""); setGuionId(""); }} className="input-field mt-1">{marcas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label>
+        <label className="text-sm text-gray-400">Plataforma donde se publicará
+          <select name="plataforma" required value={plataforma} onChange={(e) => setPlataforma(e.target.value)} className="input-field mt-1">
+            {plataformasDisponibles.map((p) => <option key={p}>{p}</option>)}
+          </select>
+          {plataforma === OTROS && (
+            <input
+              name="plataforma_personalizada"
+              required
+              maxLength={100}
+              value={plataformaPersonalizada}
+              onChange={(e) => setPlataformaPersonalizada(e.target.value)}
+              className="input-field mt-2"
+              placeholder="Especifica la plataforma"
+            />
+          )}
+          <span className="block text-xs text-gray-500 mt-1">La plataforma elegida quedará habilitada para esta marca.</span>
+        </label>
         <label className="text-sm text-gray-400">Fecha y hora<input name="fecha_hora" type="datetime-local" required defaultValue={fechaInicial} className="input-field mt-1" /></label>
         <label className="text-sm text-gray-300 sm:col-span-2">
           Responsable de publicación <span className="text-gray-500">(cualquier usuario activo)</span>

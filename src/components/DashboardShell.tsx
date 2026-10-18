@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import SidebarNav from "@/components/SidebarNav";
 import BannerUrgencia from "@/components/BannerUrgencia";
@@ -25,10 +25,23 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [menuOculto, setMenuOculto] = useState(false);
   const pathname = usePathname();
   const esCeo = perfil.role === "root" || perfil.role === "ceo";
   const titulo = tituloDeRuta(pathname, perfil.role);
   useSesionPing();
+
+  useEffect(() => {
+    setMenuOculto(window.localStorage.getItem("crm-sidebar-hidden") === "true");
+  }, []);
+
+  function alternarMenu() {
+    setMenuOculto((oculto) => {
+      const siguiente = !oculto;
+      window.localStorage.setItem("crm-sidebar-hidden", String(siguiente));
+      return siguiente;
+    });
+  }
 
   return (
     <div className="min-h-screen bg-base-900 flex">
@@ -43,10 +56,12 @@ export default function DashboardShell({
 
       {/* Sidebar: cajón deslizable en móvil, fijo en escritorio */}
       <div
+        id="dashboard-sidebar"
         className={clsx(
-          "fixed md:static inset-y-0 left-0 z-50 md:translate-x-0",
-          "transition-transform duration-200 ease-out",
-          menuAbierto ? "translate-x-0" : "-translate-x-full"
+          "fixed md:static inset-y-0 left-0 z-50 md:translate-x-0 shrink-0",
+          "overflow-hidden transition-[transform,width,opacity] duration-200 ease-out",
+          menuAbierto ? "translate-x-0" : "-translate-x-full",
+          menuOculto ? "md:w-0 md:opacity-0 md:pointer-events-none" : "md:w-60 md:opacity-100"
         )}
       >
         <SidebarNav perfil={perfil} onNavigate={() => setMenuAbierto(false)} />
@@ -59,12 +74,23 @@ export default function DashboardShell({
                      border-b border-base-600 bg-base-900/85 backdrop-blur-md"
         >
           <button
-            onClick={() => setMenuAbierto(true)}
+            onClick={() => setMenuAbierto((abierto) => !abierto)}
             className="md:hidden btn-icon shrink-0"
-            aria-label="Abrir menú"
+            aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={menuAbierto}
+            aria-controls="dashboard-sidebar"
           >
-            <Icon name="menu" className="w-5 h-5" />
+            <Icon name={menuAbierto ? "cerrar" : "menu"} className="w-5 h-5" />
+          </button>
+          <button
+            onClick={alternarMenu}
+            className="hidden md:inline-flex btn-icon shrink-0"
+            aria-label={menuOculto ? "Mostrar menú lateral" : "Ocultar menú lateral"}
+            aria-expanded={!menuOculto}
+            aria-controls="dashboard-sidebar"
+            title={menuOculto ? "Mostrar menú lateral" : "Ocultar menú lateral"}
+          >
+            <Icon name="panel" className="w-5 h-5" />
           </button>
 
           <h1 className="font-display font-semibold text-gray-50 tracking-tight truncar text-base md:text-lg">

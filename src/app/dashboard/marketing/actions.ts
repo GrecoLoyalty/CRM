@@ -197,15 +197,28 @@ export async function guardarPublicacion(input: PublicacionInput) {
   if (!input.fecha_hora || Number.isNaN(Date.parse(input.fecha_hora))) {
     throw new Error("Selecciona una fecha y hora válidas.");
   }
-  if (!input.plataforma.trim()) throw new Error("Selecciona una plataforma.");
+  const plataforma = input.plataforma.trim();
+  if (!plataforma) throw new Error("Selecciona una plataforma.");
+  if (plataforma.length > 100) throw new Error("La plataforma no puede superar 100 caracteres.");
+  const { data: marca, error: errorMarca } = await supabase
+    .from("marcas")
+    .select("plataformas_activas, activa")
+    .eq("id", input.marca_id)
+    .single();
+  if (errorMarca || !marca) throw new Error(errorMarca?.message || "La marca seleccionada no existe.");
   if (input.responsable_id) {
     const { data: perfil, error: errorPerfil } = await supabase.from("perfiles")
       .select("id").eq("id", input.responsable_id).eq("activo", true).single();
     if (errorPerfil || !perfil) throw new Error("El responsable debe ser un usuario activo.");
   }
+  if (input.guion_id) {
+    const { data: guion, error: errorGuion } = await supabase.from("guiones")
+      .select("id").eq("id", input.guion_id).eq("marca_id", input.marca_id).single();
+    if (errorGuion || !guion) throw new Error("El guion debe pertenecer a la marca seleccionada.");
+  }
   const payload = {
     marca_id: input.marca_id,
-    plataforma: input.plataforma.trim(),
+    plataforma,
     fecha_hora: new Date(input.fecha_hora).toISOString(),
     guion_id: input.guion_id || null,
     caption: input.caption.trim(),
@@ -216,6 +229,14 @@ export async function guardarPublicacion(input: PublicacionInput) {
     descarga_url: normalizarUrl(input.descarga_url, "descarga"),
     publicacion_url: normalizarUrl(input.publicacion_url, "publicación"),
   };
+  if (!marca.plataformas_activas.includes(plataforma)) {
+    if (!marca.activa) throw new Error("No se puede habilitar una plataforma en una marca archivada.");
+    const { error: errorPlataformas } = await supabase
+      .from("marcas")
+      .update({ plataformas_activas: [...marca.plataformas_activas, plataforma] })
+      .eq("id", input.marca_id);
+    if (errorPlataformas) throw new Error(errorPlataformas.message);
+  }
   const { error } = input.id
     ? await supabase.from("publicaciones").update(payload).eq("id", input.id).select("id").single()
     : await supabase.from("publicaciones").insert({ ...payload, creado_por: user.id });

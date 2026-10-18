@@ -1,6 +1,6 @@
 import type { IconName } from "@/components/ui/Icon";
 
-export type Item = { href: string; label: string; icon: IconName; paso?: number };
+export type Item = { href: string; label: string; icon: IconName; paso?: number; children?: Item[] };
 export type Grupo = { titulo?: string; items: Item[] };
 
 const DIA_A_DIA: Item[] = [
@@ -12,11 +12,17 @@ const DIA_A_DIA: Item[] = [
 
 const PARA_PUBLICAR: Item = { href: "/dashboard/marketing/para-publicar", label: "Para publicar", icon: "calendario" };
 const MARKETING: Item = { href: "/dashboard/marketing", label: "Estrategia de contenido", icon: "analisis" };
+const ANALISIS: Item = {
+  href: "/dashboard/analisis",
+  label: "Análisis",
+  icon: "analisis",
+  paso: 2,
+  children: [MARKETING],
+};
 
 const FLUJO: Item[] = [
   { href: "/dashboard/ventas", label: "Ventas", icon: "ventas", paso: 1 },
-  { href: "/dashboard/analisis", label: "Análisis", icon: "analisis", paso: 2 },
-  MARKETING,
+  ANALISIS,
   { href: "/dashboard/estetica", label: "Estética Visual", icon: "estetica", paso: 3 },
   { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "desarrollo", paso: 4 },
 ];
@@ -48,10 +54,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
     { titulo: "Flujo de producción", items: FLUJO },
   ],
   analista: [
-    { titulo: "Flujo de producción", items: [
-      { href: "/dashboard/analisis", label: "Análisis", icon: "analisis", paso: 2 },
-      MARKETING,
-    ] },
+    { titulo: "Flujo de producción", items: [ANALISIS] },
     { items: [VISTA_EJECUTIVA] },
     { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
   ],
@@ -75,7 +78,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
     { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
   ],
   marketing: [
-    { titulo: "Flujo de producción", items: [{ href: "/dashboard/analisis", label: "Análisis", icon: "analisis", paso: 2 }, MARKETING] },
+    { titulo: "Flujo de producción", items: [ANALISIS] },
     { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
   ],
 };
@@ -99,7 +102,10 @@ export function resolverActivo(
   grupos: Grupo[]
 ): string | null {
   if (!pathname) return null;
-  const hrefs = grupos.flatMap((g) => g.items.map((i) => i.href));
+  const hrefs = grupos.flatMap((g) => g.items.flatMap((item) => [
+    item.href,
+    ...(item.children?.map((child) => child.href) || []),
+  ]));
   const coincidencias = hrefs.filter(
     (h) => pathname === h || pathname.startsWith(h + "/")
   );
