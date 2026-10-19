@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import CadenaEsteticaTarea from "@/components/estetica/CadenaEsteticaTarea";
 import SuiteAppCard from "@/components/desarrollo/SuiteAppCard";
+import AsignarTareaManual from "@/components/ceo/AsignarTareaManual";
+import type { Depto } from "@/lib/types";
 
 export default async function DesarrolloPage() {
   const supabase = createClient();
@@ -9,6 +11,22 @@ export default async function DesarrolloPage() {
   } = await supabase.auth.getUser();
   const { data: perfil } = await supabase.from("perfiles").select("*").eq("id", user!.id).single();
   const esLider = perfil?.role === "root" || perfil?.role === "ceo";
+  const [{ data: perfilesActivos }, { data: deptosExtra }, { data: clientes }] = await Promise.all([
+    supabase.from("perfiles").select("id, nombre_completo, subrol, depto").eq("activo", true).order("nombre_completo"),
+    supabase.from("perfiles_departamentos").select("perfil_id, depto"),
+    supabase.from("clientes").select("id, nombre_empresa").neq("estado", "HISTORICO").order("nombre_empresa"),
+  ]);
+  const deptoTarea: Depto = "desarrollo";
+  const miembrosDesarrollo = new Set(
+    (perfilesActivos || [])
+      .filter((p) => p.depto === deptoTarea || (deptosExtra || []).some((d) => d.perfil_id === p.id && d.depto === deptoTarea))
+      .map((p) => p.id)
+  );
+  const perfilesDesarrollo = (perfilesActivos || [])
+    .filter((p) => miembrosDesarrollo.has(p.id))
+    .map((p) => ({ id: p.id, nombre_completo: p.nombre_completo, subrol: p.subrol }));
+  const deptosPorPersona: Record<string, Depto[]> = {};
+  for (const id of miembrosDesarrollo) deptosPorPersona[id] = [deptoTarea];
 
   // Mismo fix que en Estética/Ventas: considerar también cliente_equipo,
   // no solo tareas.asignado_a, para que "Equipo asignado" (Panel Root →
@@ -53,6 +71,22 @@ export default async function DesarrolloPage() {
         <p className="text-gray-500 text-sm mt-1">Soluciones técnicas construidas o adaptadas de la Suite GRESANOVA.</p>
       </div>
 
+      {esLider && (
+        <details className="card p-4">
+          <summary className="btn-primary inline-flex cursor-pointer list-none">
+            + Agregar tarea de Desarrollo
+          </summary>
+          <div className="mt-4">
+            <AsignarTareaManual
+              perfiles={perfilesDesarrollo}
+              deptosPorPersona={deptosPorPersona}
+              clientes={clientes || []}
+              deptoFijo={deptoTarea}
+            />
+          </div>
+        </details>
+      )}
+
       <section className="space-y-3">
         <h2 className="font-display font-semibold text-sm text-gray-400 uppercase tracking-wide">Tus tareas</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -73,7 +107,14 @@ export default async function DesarrolloPage() {
           <div className="card p-8 text-center text-gray-500">No tienes tareas activas por el momento.</div>
         )}
         {tareas?.map((t) => (
-          <CadenaEsteticaTarea key={t.id} tarea={t} cliente={t.cliente} siguienteAccion={{ estado: "COMPLETADA", label: "Marcar Completada" }} />
+          <CadenaEsteticaTarea
+            key={t.id}
+            tarea={t}
+            cliente={t.cliente}
+            siguienteAccion={{ estado: "COMPLETADA", label: "Marcar Completada" }}
+            puedeEliminar={perfil?.role === "root"}
+            depto="desarrollo"
+          />
         ))}
       </section>
 

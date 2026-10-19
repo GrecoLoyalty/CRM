@@ -4,17 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import TareaBanner from "@/components/shared/TareaBanner";
 import { actualizarEstadoTarea, eliminarTareaEstetica } from "@/app/dashboard/tareas-actions";
+import type { Depto } from "@/lib/types";
 
 export default function CadenaEsteticaTarea({
   tarea,
   cliente,
   siguienteAccion,
   puedeEliminar = false,
+  depto,
 }: {
   tarea: any;
   cliente: any;
   siguienteAccion?: { estado: string; label: string };
   puedeEliminar?: boolean;
+  depto: Extract<Depto, "estetica" | "desarrollo">;
 }) {
   const router = useRouter();
   const [link, setLink] = useState(tarea.link_entregable || "");
@@ -38,7 +41,7 @@ export default function CadenaEsteticaTarea({
     setEnviando(true);
     setError(null);
     try {
-      const resultado = await eliminarTareaEstetica(tarea.id);
+      const resultado = await eliminarTareaEstetica(tarea.id, depto);
       if (resultado.error) {
         setError(resultado.error);
         return;
@@ -61,8 +64,13 @@ export default function CadenaEsteticaTarea({
       />
       {puedeEliminar && (
         <div className="flex justify-end mt-1">
-          <button onClick={eliminar} disabled={enviando} className="text-xs text-signal-urgent hover:underline disabled:opacity-50">
-            {enviando ? "Eliminando..." : "Eliminar tarea"}
+          <button
+            type="button"
+            onClick={eliminar}
+            disabled={enviando}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-signal-urgent/40 bg-signal-urgent/10 px-3 py-1.5 text-xs font-medium text-signal-urgent transition-colors hover:bg-signal-urgent/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {enviando ? "Eliminando..." : "🗑 Eliminar tarea"}
           </button>
         </div>
       )}

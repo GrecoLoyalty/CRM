@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { crearTareaManual } from "@/app/dashboard/ceo/tareas-actions";
 import { DEPTO_LABEL, type Depto } from "@/lib/types";
 
@@ -19,13 +20,16 @@ export default function AsignarTareaManual({
   perfiles,
   deptosPorPersona,
   clientes,
+  deptoFijo,
 }: {
   perfiles: PerfilOpcion[];
   deptosPorPersona: Record<string, Depto[]>;
   clientes: ClienteOpcion[];
+  deptoFijo?: Depto;
 }) {
+  const router = useRouter();
   const [asignadoA, setAsignadoA] = useState("");
-  const [depto, setDepto] = useState<Depto | "">("");
+  const [depto, setDepto] = useState<Depto | "">(deptoFijo || "");
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [ligadaACliente, setLigadaACliente] = useState(false);
@@ -40,7 +44,7 @@ export default function AsignarTareaManual({
   function onCambiarPersona(id: string) {
     setAsignadoA(id);
     const opciones = deptosPorPersona[id] || [];
-    setDepto(opciones[0] || "");
+    setDepto(deptoFijo || opciones[0] || "");
   }
 
   function enviar() {
@@ -56,7 +60,7 @@ export default function AsignarTareaManual({
           titulo,
           descripcion,
           asignadoA,
-          depto: depto as Depto,
+          depto: (deptoFijo || depto) as Depto,
           clienteId: ligadaACliente ? clienteId || null : null,
           fechaPactadaEntrega: fechaPactada || null,
         });
@@ -65,6 +69,7 @@ export default function AsignarTareaManual({
         setFechaPactada("");
         setLigadaACliente(false);
         setClienteId("");
+        router.refresh();
         setOk(true);
         setTimeout(() => setOk(false), 2500);
       } catch (e: any) {
@@ -86,9 +91,14 @@ export default function AsignarTareaManual({
             </option>
           ))}
         </select>
+        {deptoFijo && perfiles.length === 0 && (
+          <p className="text-xs text-signal-warn mt-1">
+            No hay personas activas asignadas a este departamento.
+          </p>
+        )}
       </div>
 
-      {asignadoA && (
+      {asignadoA && !deptoFijo && (
         <div>
           <label className="label-field">Departamento de la tarea</label>
           {deptosDisponibles.length === 0 ? (
