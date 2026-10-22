@@ -110,6 +110,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
     const plataforma = plataformaSeleccionada === OTROS
       ? String(form.get("plataforma_personalizada") || "").trim()
       : plataformaSeleccionada;
+    const fechaHoraLocal = String(form.get("fecha_hora") || "");
     setOcupado(true);
     setError("");
     try {
@@ -117,7 +118,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
         id: seleccionado?.id,
         marca_id: String(form.get("marca_id")),
         plataforma,
-        fecha_hora: String(form.get("fecha_hora")),
+        fecha_hora: new Date(fechaHoraLocal).toISOString(),
         guion_id: String(form.get("guion_id") || "") || null,
         caption: String(form.get("caption") || ""),
         hashtags: String(form.get("hashtags") || "").split(/[\s,]+/).filter(Boolean),
