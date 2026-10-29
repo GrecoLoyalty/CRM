@@ -10,6 +10,7 @@ Sistema de Gestión de Relaciones y Flujo Operativo, construido según `GRESANOV
 
 | Módulo | Estado |
 |---|---|
+| Scrum (Tecnología & Soluciones): backlog único, sprints de 2 semanas, tablero, daily, capacidad, colchón de urgencias y Definición de “Terminado” con reglas en la base de datos | ✅ Ver `SCRUM.md` (migración `0042_scrum.sql`) |
 | Auth + RBAC (Root, CEO, Analista, Vendedor, Producción) | ✅ Completo, roles viven en la base de datos |
 | Ventas: formulario de captación, pipeline, conversión a cliente, alerta de duplicados | ✅ Completo |
 | Análisis: interfaz de doble entrada, Briefing obligatorio (bloqueo real en frontend **y** backend), switches de ruta | ✅ Completo |

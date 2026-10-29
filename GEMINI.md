@@ -13,6 +13,7 @@
 - **Estética Visual:** Cadena de tareas (Camarógrafo → Editor → Community Manager) con autoasignación.
 - **Desarrollo:** Asignación de tareas técnicas y gestión de la Suite de aplicaciones.
 - **Marketing:** Marcas, calendarios, guiones y publicaciones.
+- **Scrum (Tecnología & Soluciones):** Backlog, sprints, tablero, daily y Definición de "Terminado" (`/dashboard/scrum`, migración `0042`). Ver `SCRUM.md`.
 - **CEO / Dirección:** Vista de Águila (grafo interactivo D3), banners de urgencia, métricas y portal de clientes.
 - **Root:** Auditoría inmutable, bóveda cifrada (AES-256 / pgcrypto), gestión de roles y configuración global.
 

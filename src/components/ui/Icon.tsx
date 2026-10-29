@@ -13,6 +13,7 @@ export type IconName =
   | "pizarron"
   | "tickets"
   | "tareas"
+  | "scrum"
   | "aguila"
   | "asignar"
   | "boveda"
@@ -74,6 +75,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="10" />
       <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  scrum: (
+    <>
+      <path d="M21 12a9 9 0 0 0-15-6.7L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
+      <path d="M16 16h5v5" />
     </>
   ),
   aguila: (

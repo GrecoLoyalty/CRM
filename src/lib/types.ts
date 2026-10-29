@@ -313,3 +313,74 @@ export interface TiempoUsoDiario {
   fecha: string;
   segundos_activos: number;
 }
+
+// ---------------------------------------------------------------------
+// Scrum (Tecnología & Soluciones)
+// ---------------------------------------------------------------------
+export type RolScrum = "product_owner" | "scrum_master" | "desarrollo" | "asesor";
+export type EstadoSprint = "planificado" | "activo" | "cerrado";
+export type TipoScrumItem = "historia" | "tarea" | "bug" | "urgencia";
+export type EstadoScrumItem = "backlog" | "por_hacer" | "en_progreso" | "en_revision" | "hecho";
+
+export interface MiembroScrum {
+  perfil_id: string;
+  rol_scrum: RolScrum;
+  horas_semana: number;
+  factor_dedicacion: number;
+  perfil?: { nombre_completo: string } | null;
+}
+
+export interface Sprint {
+  id: string;
+  nombre: string;
+  objetivo: string | null;
+  fecha_inicio: string;
+  fecha_fin: string;
+  estado: EstadoSprint;
+  colchon_pct: number;
+  pct_clientes: number;
+  retro_bien: string | null;
+  retro_mal: string | null;
+  retro_mejorar: string | null;
+  created_at: string;
+}
+
+export interface ScrumItem {
+  id: string;
+  sprint_id: string | null;
+  titulo: string;
+  descripcion: string | null;
+  criterios: string | null;
+  tipo: TipoScrumItem;
+  epica: string | null;
+  cliente_id: string | null;
+  estado: EstadoScrumItem;
+  orden: number;
+  horas_estimadas: number | null;
+  horas_reales: number | null;
+  responsable_id: string | null;
+  revisor_id: string | null;
+  link_pr: string | null;
+  bloqueo: string | null;
+  dod_probado: boolean;
+  dod_pr_revisado: boolean;
+  dod_documentado: boolean;
+  dod_aprobado: boolean;
+  documentacion: string | null;
+  hecho_en: string | null;
+  created_at: string;
+  cliente?: { nombre_empresa: string } | null;
+  responsable?: { nombre_completo: string } | null;
+  revisor?: { nombre_completo: string } | null;
+}
+
+export interface ScrumDaily {
+  id: string;
+  sprint_id: string;
+  perfil_id: string;
+  fecha: string;
+  ayer: string | null;
+  hoy: string | null;
+  bloqueos: string | null;
+  perfil?: { nombre_completo: string } | null;
+}

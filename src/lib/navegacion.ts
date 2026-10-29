@@ -10,6 +10,7 @@ const DIA_A_DIA: Item[] = [
   { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "tareas" },
 ];
 
+const SCRUM: Item = { href: "/dashboard/scrum", label: "Scrum", icon: "scrum" };
 const PARA_PUBLICAR: Item = { href: "/dashboard/marketing/para-publicar", label: "Para publicar", icon: "calendario" };
 const MARKETING: Item = { href: "/dashboard/marketing", label: "Estrategia de contenido", icon: "analisis" };
 const ANALISIS: Item = {
@@ -44,13 +45,13 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
         { href: "/dashboard/root/empresa", label: "Empresa y reportes", icon: "aguila" },
       ],
     },
-    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
     { titulo: "Dirección", items: DIRECCION },
     { titulo: "Flujo de producción", items: FLUJO },
   ],
   ceo: [
     { titulo: "Dirección", items: DIRECCION },
-    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
     { titulo: "Flujo de producción", items: FLUJO },
   ],
   analista: [
@@ -75,11 +76,11 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
         VISTA_EJECUTIVA,
       ],
     },
-    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
   ],
   marketing: [
     { titulo: "Flujo de producción", items: [ANALISIS] },
-    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
   ],
 };
 
