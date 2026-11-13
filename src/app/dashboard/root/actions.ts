@@ -125,24 +125,55 @@ export async function actualizarDepartamentosExtra(perfilId: string, deptos: str
   revalidatePath("/dashboard/root");
 }
 
-export async function alternarActivo(perfilId: string, activo: boolean) {
+async function exigirRoot() {
   const supabase = createClient();
-  const { error } = await supabase.from("perfiles").update({ activo }).eq("id", perfilId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+  const { data: miPerfil } = await supabase.from("perfiles").select("role").eq("id", user.id).single();
+  if (miPerfil?.role !== "root") throw new Error("Solo Root puede administrar accesos.");
+  return { supabase, user };
+}
+
+// Bloquea o desbloquea el inicio de sesión en Supabase Auth. Si falta la
+// service key (o falla), no se interrumpe nada: `perfiles.activo = false`
+// ya impide entrar al CRM, esto solo refuerza el bloqueo.
+async function bloquearInicioDeSesion(perfilId: string, bloquear: boolean) {
+  try {
+    const admin = createServiceClient();
+    await admin.auth.admin.updateUserById(perfilId, { ban_duration: bloquear ? "876000h" : "none" });
+  } catch (err) {
+    console.error("[root] No se pudo actualizar el bloqueo de Auth:", err);
+  }
+}
+
+// Aprueba una solicitud de acceso (o reactiva a alguien dado de baja).
+export async function alternarActivo(perfilId: string, activo: boolean) {
+  const { supabase } = await exigirRoot();
+  const cambios = activo ? { activo: true, dado_de_baja_at: null } : { activo: false, dado_de_baja_at: new Date().toISOString() };
+  const { error } = await supabase.from("perfiles").update(cambios).eq("id", perfilId);
   if (error) throw new Error(error.message);
+  await bloquearInicioDeSesion(perfilId, !activo);
   revalidatePath("/dashboard/root");
 }
 
-// Baja lógica del perfil: se desactiva el acceso al CRM y se conserva el
-// historial en los registros de auditoría/tickets/tareas/eventos, sin
-// borrar la cuenta de Auth ni la fila de `perfiles`.
+export async function reactivarUsuario(perfilId: string): Promise<{ error: string | null }> {
+  try {
+    await alternarActivo(perfilId, true);
+    return { error: null };
+  } catch (err: any) {
+    return { error: err?.message || "No se pudo reactivar al usuario." };
+  }
+}
+
+// Baja del equipo (o rechazo de una solicitud). La persona queda marcada
+// con `dado_de_baja_at`: pierde el acceso, deja de aparecer en Solicitudes
+// pendientes y en las listas de asignación, y se conserva todo su historial
+// (tareas, tickets, auditoría) sin borrar la cuenta.
 //
-// IMPORTANTE: esta función regresa { error } en vez de hacer `throw`.
-// Next.js oculta en producción el mensaje real de cualquier error que
-// se lance ("throw") desde una Server Action — el cliente solo recibe
-// un texto genérico ("An error occurred in the Server Components
-// render...") sin importar cuál haya sido el problema real. Regresando
-// el error como dato normal (igual que ya hace src/app/dashboard/tickets/actions.ts),
-// el mensaje real sí llega intacto a la UI.
+// Regresa { error } en vez de hacer `throw`: Next.js oculta en producción el
+// mensaje real de cualquier error lanzado desde una Server Action.
 export async function eliminarUsuario(perfilId: string): Promise<{ error: string | null }> {
   try {
     const supabase = createClient();
@@ -160,12 +191,16 @@ export async function eliminarUsuario(perfilId: string): Promise<{ error: string
       return { error: "Solo Root puede dar de baja usuarios." };
     }
 
-    // Suprimir el acceso del CRM sin borrar el historial del usuario.
-    const { error } = await supabase.from("perfiles").update({ activo: false }).eq("id", perfilId);
+    const { error } = await supabase
+      .from("perfiles")
+      .update({ activo: false, dado_de_baja_at: new Date().toISOString() })
+      .eq("id", perfilId);
     if (error) {
       const msg = typeof error.message === "string" && error.message ? error.message : `Error de Supabase (status ${(error as any).status ?? "desconocido"})`;
       return { error: msg };
     }
+
+    await bloquearInicioDeSesion(perfilId, true);
 
     revalidatePath("/dashboard/root");
     return { error: null };

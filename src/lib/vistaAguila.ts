@@ -1,8 +1,8 @@
 // Única fuente de verdad para los datos que alimentan el widget "Vista de
 // Águila" (src/components/ceo/VistaAguila.tsx). Antes existían DOS
 // implementaciones distintas de este cálculo — una en /dashboard/ceo
-// (para Root/CEO) y otra en /dashboard/vista-aguila (para todos los demás
-// roles) — y no coincidían entre sí:
+// (para Root/CEO) y otra en /dashboard/vista-aguila (ya eliminada, hoy solo
+// redirige a /dashboard/ceo) — y no coincidían entre sí:
 //   - La de Root/CEO contaba TAREAS de estética/desarrollo (una tarea por
 //     persona en la cadena de producción), así que un cliente con 3 tareas
 //     abiertas aparecía 3 veces en la lista y se sumaba 3 veces al conteo.

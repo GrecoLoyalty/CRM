@@ -21,7 +21,8 @@ export default function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setError("Correo o contraseña incorrectos.");
+      const baneado = /banned/i.test(error.message) || (error as any).code === "user_banned";
+      setError(baneado ? "Esta cuenta fue dada de baja. Habla con un administrador." : "Correo o contraseña incorrectos.");
       return;
     }
     const destino = searchParams?.get("next") || "/dashboard";

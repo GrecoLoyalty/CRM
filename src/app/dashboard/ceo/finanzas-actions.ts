@@ -45,8 +45,6 @@ export async function registrarMovimientoCaja(input: {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard/ceo");
-  revalidatePath("/dashboard/ceo/finanzas");
-  revalidatePath("/dashboard/vista-aguila");
 }
 
 export async function eliminarMovimientoCaja(id: string) {
@@ -57,6 +55,4 @@ export async function eliminarMovimientoCaja(id: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard/ceo");
-  revalidatePath("/dashboard/ceo/finanzas");
-  revalidatePath("/dashboard/vista-aguila");
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { actualizarRol, actualizarDepartamentosExtra, alternarActivo, eliminarUsuario } from "@/app/dashboard/root/actions";
+import { actualizarRol, actualizarDepartamentosExtra, alternarActivo, eliminarUsuario, reactivarUsuario } from "@/app/dashboard/root/actions";
 import type { Perfil } from "@/lib/types";
 
 const ROLES = ["root", "ceo", "marketing", "analista", "vendedor", "produccion"];
@@ -17,8 +17,10 @@ export default function GestionRoles({
   currentUserId: string;
   departamentosExtra: Record<string, string[]>;
 }) {
-  const pendientes = perfiles.filter((p) => !p.activo);
+  // Una baja deja `dado_de_baja_at`: ya no cuenta como solicitud pendiente.
+  const pendientes = perfiles.filter((p) => !p.activo && !p.dado_de_baja_at);
   const activos = perfiles.filter((p) => p.activo);
+  const bajas = perfiles.filter((p) => !p.activo && p.dado_de_baja_at);
 
   return (
     <>
@@ -80,7 +82,51 @@ export default function GestionRoles({
           </table>
         </div>
       </section>
+
+      {bajas.length > 0 && <ArchivoBajas bajas={bajas} />}
     </>
+  );
+}
+
+// Las bajas no estorban en la pantalla: quedan cerradas aquí por si hay que
+// devolverle el acceso a alguien.
+function ArchivoBajas({ bajas }: { bajas: Perfil[] }) {
+  return (
+    <details className="card p-4">
+      <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-300">Bajas ({bajas.length})</summary>
+      <ul className="mt-3 divide-y divide-base-700">
+        {bajas.map((p) => (
+          <FilaBaja key={p.id} perfil={p} />
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function FilaBaja({ perfil }: { perfil: Perfil }) {
+  const [trabajando, setTrabajando] = useState(false);
+  const [listo, setListo] = useState(false);
+
+  async function reactivar() {
+    if (!window.confirm(`¿Devolverle el acceso a "${perfil.nombre_completo}"?`)) return;
+    setTrabajando(true);
+    const { error } = await reactivarUsuario(perfil.id);
+    if (error) {
+      alert(error);
+      setTrabajando(false);
+      return;
+    }
+    setListo(true);
+  }
+
+  if (listo) return null;
+  return (
+    <li className="flex items-center justify-between gap-3 py-2 text-sm">
+      <span className="text-gray-400">{perfil.nombre_completo}</span>
+      <button onClick={reactivar} disabled={trabajando} className="text-accent-soft text-xs hover:underline">
+        {trabajando ? "Reactivando..." : "Reactivar"}
+      </button>
+    </li>
   );
 }
 
@@ -96,7 +142,7 @@ function FilaPerfil({
   const [role, setRole] = useState(perfil.role);
   const [depto, setDepto] = useState(perfil.depto || "");
   const [subrol, setSubrol] = useState(perfil.subrol || "");
-  const [activo, setActivo] = useState(perfil.activo);
+  const [aprobado, setAprobado] = useState(false);
   const [aprobando, setAprobando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [eliminado, setEliminado] = useState(false);
@@ -125,8 +171,8 @@ function FilaPerfil({
   async function aprobar() {
     setAprobando(true);
     try {
-      setActivo(true);
       await alternarActivo(perfil.id, true);
+      setAprobado(true);
     } finally {
       setAprobando(false);
     }
@@ -134,8 +180,8 @@ function FilaPerfil({
 
   async function eliminar() {
     const mensaje = perfil.activo
-      ? `¿Dar de baja al usuario "${perfil.nombre_completo}" del CRM? Se conservará el historial y su acceso será bloqueado.`
-      : `¿Rechazar la solicitud de "${perfil.nombre_completo}"? Se mantendrá el historial y se bloqueará el acceso.`;
+      ? `¿Dar de baja a "${perfil.nombre_completo}"? Perderá el acceso y dejará de aparecer aquí. Se conserva su historial.`
+      : `¿Rechazar la solicitud de "${perfil.nombre_completo}"? Dejará de aparecer aquí y no podrá entrar.`;
     if (!window.confirm(mensaje)) return;
 
     setEliminando(true);
@@ -196,18 +242,10 @@ function FilaPerfil({
       </td>
       <td className="py-2 pr-4">
         {perfil.activo ? (
-          <button
-            onClick={async () => {
-              setActivo(!activo);
-              await alternarActivo(perfil.id, !activo);
-            }}
-            className={activo ? "text-green-400 text-xs" : "text-gray-500 text-xs"}
-          >
-            {activo ? "● Activo" : "○ Inactivo"}
-          </button>
+          <span className="text-green-400 text-xs">● Activo</span>
         ) : (
-          <button onClick={aprobar} disabled={aprobando || activo} className="btn-primary text-xs px-3 py-1.5 whitespace-nowrap">
-            {activo ? "✓ Aprobado" : aprobando ? "Aprobando..." : "Aprobar acceso"}
+          <button onClick={aprobar} disabled={aprobando || aprobado} className="btn-primary text-xs px-3 py-1.5 whitespace-nowrap">
+            {aprobado ? "✓ Aprobado" : aprobando ? "Aprobando..." : "Aprobar acceso"}
           </button>
         )}
       </td>

@@ -3,22 +3,30 @@ import type { IconName } from "@/components/ui/Icon";
 export type Item = { href: string; label: string; icon: IconName; paso?: number; children?: Item[] };
 export type Grupo = { titulo?: string; items: Item[] };
 
-const DIA_A_DIA: Item[] = [
-  { href: "/dashboard/calendario", label: "Calendario", icon: "calendario" },
-  { href: "/dashboard/pizarron", label: "Pizarrón", icon: "pizarron" },
-  { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
+// Una sola línea de trabajo:
+//   Flujo de producción (cliente de principio a fin) → Mi trabajo (lo mío del día) → Dirección.
+const MI_TRABAJO: Item[] = [
   { href: "/dashboard/mis-tareas", label: "Mis tareas", icon: "tareas" },
+  { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/dashboard/calendario", label: "Calendario", icon: "calendario" },
+  { href: "/dashboard/marketing/para-publicar", label: "Para publicar", icon: "calendario" },
+  { href: "/dashboard/pizarron", label: "Pizarrón", icon: "pizarron" },
 ];
 
-const SCRUM: Item = { href: "/dashboard/scrum", label: "Scrum", icon: "scrum" };
-const PARA_PUBLICAR: Item = { href: "/dashboard/marketing/para-publicar", label: "Para publicar", icon: "calendario" };
-const MARKETING: Item = { href: "/dashboard/marketing", label: "Estrategia de contenido", icon: "analisis" };
+// El contenido (planificar, guiones, marcas) cuelga directo de Análisis:
+// antes había una pantalla intermedia que solo repetía estos tres enlaces.
+const CONTENIDO: Item[] = [
+  { href: "/dashboard/marketing/calendario", label: "Planificar y asignar", icon: "calendario" },
+  { href: "/dashboard/marketing/guiones", label: "Guiones", icon: "analisis" },
+  { href: "/dashboard/marketing/marcas", label: "Marcas", icon: "analisis" },
+];
+
 const ANALISIS: Item = {
   href: "/dashboard/analisis",
   label: "Análisis",
   icon: "analisis",
   paso: 2,
-  children: [MARKETING],
+  children: CONTENIDO,
 };
 
 const FLUJO: Item[] = [
@@ -45,51 +53,43 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
         { href: "/dashboard/root/empresa", label: "Empresa y reportes", icon: "aguila" },
       ],
     },
-    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
-    { titulo: "Dirección", items: DIRECCION },
     { titulo: "Flujo de producción", items: FLUJO },
+    { titulo: "Mi trabajo", items: MI_TRABAJO },
+    { titulo: "Dirección", items: DIRECCION },
   ],
   ceo: [
-    { titulo: "Dirección", items: DIRECCION },
-    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
     { titulo: "Flujo de producción", items: FLUJO },
+    { titulo: "Mi trabajo", items: MI_TRABAJO },
+    { titulo: "Dirección", items: DIRECCION },
   ],
   analista: [
-    { titulo: "Flujo de producción", items: [ANALISIS] },
-    { items: [VISTA_EJECUTIVA] },
-    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+    { titulo: "Flujo de producción", items: [ANALISIS, VISTA_EJECUTIVA] },
+    { titulo: "Mi trabajo", items: MI_TRABAJO },
   ],
   vendedor: [
-    {
-      items: [
-        { href: "/dashboard/ventas", label: "Ventas", icon: "ventas" },
-        VISTA_EJECUTIVA,
-      ],
-    },
-    { titulo: "Día a día", items: [...DIA_A_DIA, PARA_PUBLICAR] },
+    { titulo: "Flujo de producción", items: [{ href: "/dashboard/ventas", label: "Ventas", icon: "ventas" }, VISTA_EJECUTIVA] },
+    { titulo: "Mi trabajo", items: MI_TRABAJO },
   ],
   produccion: [
     {
+      titulo: "Flujo de producción",
       items: [
         { href: "/dashboard/estetica", label: "Estética Visual", icon: "estetica" },
         { href: "/dashboard/desarrollo", label: "Desarrollo", icon: "desarrollo" },
         VISTA_EJECUTIVA,
       ],
     },
-    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
+    { titulo: "Mi trabajo", items: MI_TRABAJO },
   ],
   marketing: [
     { titulo: "Flujo de producción", items: [ANALISIS] },
-    { titulo: "Día a día", items: [...DIA_A_DIA, SCRUM, PARA_PUBLICAR] },
+    { titulo: "Mi trabajo", items: MI_TRABAJO },
   ],
 };
 
 /* Rutas que no están en el menú pero sí necesitan título en la cabecera */
 const TITULOS_EXTRA: { href: string; label: string }[] = [
-  { href: "/dashboard/marketing/para-publicar", label: "Para publicar" },
-  { href: "/dashboard/marketing", label: "Estrategia de contenido" },
   { href: "/dashboard/cliente", label: "Ficha de cliente" },
-  { href: "/dashboard/vista-aguila", label: "Vista de Águila" },
   { href: "/dashboard", label: "Inicio" },
 ];
 
@@ -118,7 +118,7 @@ export function resolverActivo(
 export function tituloDeRuta(pathname: string | null, role: string): string {
   if (!pathname) return "Inicio";
 
-  const items = (NAV_POR_ROL[role] || []).flatMap((g) => g.items);
+  const items = (NAV_POR_ROL[role] || []).flatMap((g) => g.items.flatMap((i) => [i, ...(i.children || [])]));
   const candidatos: { href: string; label: string }[] = [
     ...items.map((i) => ({ href: i.href, label: i.label })),
     ...TITULOS_EXTRA,

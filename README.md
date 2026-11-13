@@ -10,7 +10,6 @@ Sistema de Gestión de Relaciones y Flujo Operativo, construido según `GRESANOV
 
 | Módulo | Estado |
 |---|---|
-| Scrum (Tecnología & Soluciones): backlog único, sprints de 2 semanas, tablero, daily, capacidad, colchón de urgencias y Definición de “Terminado” con reglas en la base de datos | ✅ Ver `SCRUM.md` (migración `0042_scrum.sql`) |
 | Auth + RBAC (Root, CEO, Analista, Vendedor, Producción) | ✅ Completo, roles viven en la base de datos |
 | Ventas: formulario de captación, pipeline, conversión a cliente, alerta de duplicados | ✅ Completo |
 | Análisis: interfaz de doble entrada, Briefing obligatorio (bloqueo real en frontend **y** backend), switches de ruta | ✅ Completo |
@@ -26,7 +25,7 @@ Sistema de Gestión de Relaciones y Flujo Operativo, construido según `GRESANOV
 | Solicitud de acceso auto-servicio (`/solicitar-acceso`) con aprobación desde Panel Root | ✅ Completo — ver sección 4.5 |
 | Chat en tiempo real por cliente, con acceso de los 3 CEOs a todos los chats | ✅ Completo (Supabase Realtime) |
 | Chat interno de equipo — 1 a 1 y grupal, sin depender de un cliente | ✅ Completo (Supabase Realtime), botón 👥 junto al chat de clientes |
-| Rechazar solicitudes / eliminar usuarios desde Panel Root | ✅ Completo — borra la cuenta de Auth y su perfil en cascada |
+| Rechazar solicitudes / dar de baja usuarios desde Panel Root | ✅ La persona pierde el acceso (también se bloquea su login), desaparece de “Solicitudes pendientes” y de las listas de asignación, y se conserva su historial. Las bajas quedan en una sección cerrada “Bajas” por si hay que reactivar (migración `0044`) |
 | Diseño responsive (móvil, tablet, escritorio) | ✅ Sidebar se vuelve un menú deslizable en pantallas chicas; tablas con scroll horizontal; formularios y tarjetas se acomodan en una sola columna |
 | Ficha de cliente compartida + Bitácora entre departamentos | ✅ `/dashboard/cliente/[id]` — cualquier depto con acceso al cliente ve la necesidad detectada (Ventas), el Briefing (Análisis), los entregables de cada tarea, y puede agregar notas/links visibles para todos en tiempo real |
 | Eliminar cliente (con doble confirmación) | ✅ Solo Root — botón en la ficha del cliente. Borra en cascada tareas, chat, bóveda, bitácora e historial. RLS a nivel de base de datos también lo restringe, no solo el botón |
@@ -151,3 +150,13 @@ Esto reemplaza tener que crear usuarios manualmente desde Supabase — solo lo n
 - Row Level Security (RLS) está activo en **todas** las tablas — los permisos de la Tabla Maestra de Roles del blueprint están implementados como políticas SQL, no solo en el frontend.
 - El Audit Trail es **INSERT-only**: los permisos de UPDATE/DELETE fueron revocados a nivel de base de datos.
 - La Bóveda nunca guarda contraseñas en texto plano — se cifran con `pgp_sym_encrypt` (AES) usando `VAULT_SECRET_KEY`, una variable de entorno que **nunca** debe subirse a GitHub (ya está en `.gitignore` vía `.env.local`).
+
+---
+
+## 7. Cambios recientes (línea de trabajo única)
+
+- **Scrum eliminado.** Se corre `supabase/migrations/0043_quitar_scrum.sql` para borrar sus tablas (ya no hay sprints, backlog ni daily).
+- **Una sola línea de trabajo:** menú ordenado como *Flujo de producción → Mi trabajo → Dirección*. “Mis tareas” junta lo asignado directo y lo que te toca en el flujo de cada cliente.
+- **Una sola Vista de Águila** (`/dashboard/ceo`); `/dashboard/vista-aguila` solo redirige. La pantalla intermedia de “Estrategia de contenido” se quitó: Planificar, Guiones y Marcas cuelgan directo de Análisis.
+- **Bajas limpias:** correr `supabase/migrations/0044_bajas_de_usuarios.sql`. Para quienes ya habías dado de baja antes, pulsa “Rechazar” una vez en el Panel Root (o usa el SQL comentado al final de esa migración).
+- Se quitó `.github/workflows/deploy.yml` (publicaba en GitHub Pages una app que necesita servidor; el despliegue real es Vercel).

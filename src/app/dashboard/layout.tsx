@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!perfil) redirect("/login");
 
   if (!perfil.activo) {
-    return <PendienteAprobacion nombre={perfil.nombre_completo} />;
+    return <PendienteAprobacion nombre={perfil.nombre_completo} baja={Boolean(perfil.dado_de_baja_at)} />;
   }
 
   const { data: banners } = await supabase

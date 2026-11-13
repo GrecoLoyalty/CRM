@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 const DESTINO_POR_ROL: Record<string, string> = {
   root: "/dashboard/root",
   ceo: "/dashboard/ceo",
-  marketing: "/dashboard/marketing",
+  marketing: "/dashboard/marketing/calendario",
   analista: "/dashboard/analisis",
   vendedor: "/dashboard/ventas",
   produccion: "/dashboard/estetica",

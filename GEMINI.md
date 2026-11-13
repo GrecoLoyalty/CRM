@@ -13,7 +13,6 @@
 - **Estética Visual:** Cadena de tareas (Camarógrafo → Editor → Community Manager) con autoasignación.
 - **Desarrollo:** Asignación de tareas técnicas y gestión de la Suite de aplicaciones.
 - **Marketing:** Marcas, calendarios, guiones y publicaciones.
-- **Scrum (Tecnología & Soluciones):** Backlog, sprints, tablero, daily y Definición de "Terminado" (`/dashboard/scrum`, migración `0042`). Ver `SCRUM.md`.
 - **CEO / Dirección:** Vista de Águila (grafo interactivo D3), banners de urgencia, métricas y portal de clientes.
 - **Root:** Auditoría inmutable, bóveda cifrada (AES-256 / pgcrypto), gestión de roles y configuración global.
 
@@ -54,7 +53,7 @@ src/
   - Emplear Server Components por defecto.
   - Usar `'use client'` únicamente cuando se necesiten hooks de React, eventos interactivos o suscripciones a Supabase Realtime.
 - **Tipado Estricto:** Mantener las definiciones en `src/lib/types.ts` o tipado específico del dominio. Evitar el uso de `any` o aserciones de tipo forzadas.
-- **Migraciones SQL:** Nuevos cambios de esquema deben crearse como una nueva migración con numeración incremental en `supabase/migrations/` (ej. `0042_nombre_cambio.sql`).
+- **Migraciones SQL:** Nuevos cambios de esquema deben crearse como una nueva migración con numeración incremental en `supabase/migrations/` (ej. `0045_nombre_cambio.sql`).
 - **Verificación:** Antes de dar por concluida una tarea, ejecutar y validar con:
   - `npm run lint`
   - `npm run build`

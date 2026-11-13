@@ -18,7 +18,6 @@ export async function cambiarEtapaCliente(clienteId: string, nuevoEstado: string
   if (error) throw new Error(error.message);
   revalidatePath(`/dashboard/cliente/${clienteId}`);
   revalidatePath("/dashboard/ceo");
-  revalidatePath("/dashboard/vista-aguila");
   revalidatePath("/dashboard/root/clientes");
 }
 
