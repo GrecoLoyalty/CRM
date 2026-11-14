@@ -83,7 +83,11 @@ export default async function VentasPage() {
 
       <div className="space-y-6">
         <FormularioCaptacion giros={giros || []} />
-        <ListaProspectos prospectos={prospectos || []} />
+        <ListaProspectos
+          prospectos={prospectos || []}
+          userId={user!.id}
+          esRoot={perfil?.role === "root"}
+        />
       </div>
     </div>
   );

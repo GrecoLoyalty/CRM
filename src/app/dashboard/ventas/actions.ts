@@ -57,3 +57,49 @@ export async function cerrarGanado(clienteId: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/ventas");
 }
+
+export async function eliminarProspecto(clienteId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { data: perfil, error: perfilError } = await supabase
+    .from("perfiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (perfilError) throw new Error(perfilError.message);
+
+  const { data: prospecto, error: prospectoError } = await supabase
+    .from("clientes")
+    .select("estado, vendedor_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (prospectoError) throw new Error(prospectoError.message);
+  if (!prospecto || prospecto.estado !== "PROSPECTO") {
+    throw new Error("El prospecto ya no existe o ya avanzó a otra etapa.");
+  }
+
+  const esRoot = perfil.role === "root";
+  const esVendedorResponsable = perfil.role === "vendedor" && prospecto.vendedor_id === user.id;
+  if (!esRoot && !esVendedorResponsable) {
+    throw new Error("Solo Root o el vendedor responsable pueden eliminar este prospecto.");
+  }
+
+  let query = supabase
+    .from("clientes")
+    .delete()
+    .eq("id", clienteId)
+    .eq("estado", "PROSPECTO");
+  if (esVendedorResponsable) query = query.eq("vendedor_id", user.id);
+
+  const { data, error } = await query.select("id").maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("No se encontró el prospecto o ya no puedes eliminarlo.");
+
+  revalidatePath("/dashboard/ventas");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/root/clientes");
+}

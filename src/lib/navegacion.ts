@@ -42,6 +42,8 @@ const DIRECCION: Item[] = [
   { href: "/dashboard/ceo/boveda", label: "Bóveda", icon: "boveda" },
 ];
 
+const PREVENTAS: Item = { href: "/dashboard/preventas", label: "Preventas", icon: "paquete" };
+
 const VISTA_EJECUTIVA: Item = { href: "/dashboard/ceo", label: "Vista de Águila", icon: "aguila" };
 
 export const NAV_POR_ROL: Record<string, Grupo[]> = {
@@ -54,11 +56,13 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
       ],
     },
     { titulo: "Flujo de producción", items: FLUJO },
+    { titulo: "Venta de productos", items: [PREVENTAS] },
     { titulo: "Mi trabajo", items: MI_TRABAJO },
     { titulo: "Dirección", items: DIRECCION },
   ],
   ceo: [
     { titulo: "Flujo de producción", items: FLUJO },
+    { titulo: "Venta de productos", items: [PREVENTAS] },
     { titulo: "Mi trabajo", items: MI_TRABAJO },
     { titulo: "Dirección", items: DIRECCION },
   ],
@@ -68,6 +72,7 @@ export const NAV_POR_ROL: Record<string, Grupo[]> = {
   ],
   vendedor: [
     { titulo: "Flujo de producción", items: [{ href: "/dashboard/ventas", label: "Ventas", icon: "ventas" }, VISTA_EJECUTIVA] },
+    { titulo: "Venta de productos", items: [PREVENTAS] },
     { titulo: "Mi trabajo", items: MI_TRABAJO },
   ],
   produccion: [

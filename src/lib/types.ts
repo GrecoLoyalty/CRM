@@ -314,3 +314,82 @@ export interface TiempoUsoDiario {
   fecha: string;
   segundos_activos: number;
 }
+
+// ---------------------------------------------------------------------
+// Preventas (división de venta de productos)
+// ---------------------------------------------------------------------
+export type EstadoPreventa = "activa" | "enviada" | "entregada" | "cancelada";
+export type MetodoPagoPreventa = "efectivo" | "transferencia" | "otro";
+
+export interface Preventa {
+  id: string;
+  folio: string;
+  ticket_token: string;
+  nombre_cliente: string;
+  nombre_negocio: string;
+  telefono: string;
+  email: string;
+  direccion: string;
+  producto: string;
+  cantidad: number;
+  monto_total: number;
+  monto_anticipo: number;
+  notas: string | null;
+  anticipo_pagado: boolean;
+  pago_metodo: MetodoPagoPreventa | null;
+  pago_fecha: string | null;
+  pago_registrado_por: string | null;
+  estado: EstadoPreventa;
+  vendedor_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PreventasConfig {
+  id: "principal";
+  etapa_actual: number;
+  fecha_estimada_envio: string | null;
+  mensaje_general: string | null;
+  banco: string | null;
+  titular: string | null;
+  clabe: string | null;
+  numero_cuenta: string | null;
+  instrucciones_pago: string | null;
+  updated_at: string;
+}
+
+export interface PreventaActualizacion {
+  id: string;
+  titulo: string;
+  mensaje: string | null;
+  publicada: boolean;
+  created_at: string;
+}
+
+// Etapas globales: el avance es el MISMO para todos los clientes.
+// Root mueve "etapa_actual" a mano desde el panel de Preventas.
+export const ETAPAS_PREVENTA: { n: number; label: string; detalle: string }[] = [
+  { n: 1, label: "Preventa registrada", detalle: "Tu pedido ya está en nuestro sistema." },
+  { n: 2, label: "En preparación", detalle: "Estamos preparando los productos de esta tanda." },
+  { n: 3, label: "Control de calidad", detalle: "Revisamos que todo esté en orden." },
+  { n: 4, label: "Listo para envío", detalle: "Tu pedido está empacado y en cola de salida." },
+  { n: 5, label: "Enviado", detalle: "Tu pedido va en camino." },
+];
+
+export const ESTADO_PREVENTA_LABEL: Record<EstadoPreventa, string> = {
+  activa: "Activa",
+  enviada: "Enviada",
+  entregada: "Entregada",
+  cancelada: "Cancelada",
+};
+
+export const ESTADO_PREVENTA_COLOR: Record<EstadoPreventa, string> = {
+  activa: "bg-signal-info/15 text-signal-info",
+  enviada: "bg-accent/15 text-accent-soft",
+  entregada: "bg-green-500/15 text-green-400",
+  cancelada: "bg-base-600 text-gray-400",
+};
+
+export function formatoMXN(valor: number | string | null | undefined) {
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(valor || 0));
+}
