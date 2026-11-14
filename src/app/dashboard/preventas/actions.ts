@@ -86,6 +86,66 @@ export async function crearPreventa(formData: FormData) {
   return { folio: data.folio as string, token: data.ticket_token as string, pagado };
 }
 
+export async function actualizarPreventa(id: string, formData: FormData) {
+  const { supabase, rol } = await contexto();
+  if (!["root", "ceo"].includes(rol)) throw new Error("Solo Root o CEO pueden editar preventas.");
+
+  const { data: existente, error: errorExistente } = await supabase
+    .from("preventas")
+    .select("ticket_token, anticipo_pagado, monto_anticipo")
+    .eq("id", id)
+    .maybeSingle();
+  if (errorExistente) throw new Error(errorExistente.message);
+  if (!existente) throw new Error("No se encontró la preventa.");
+
+  const nombre_cliente = texto(formData, "nombre_cliente");
+  const nombre_negocio = texto(formData, "nombre_negocio");
+  const telefono = texto(formData, "telefono");
+  const email = texto(formData, "email").toLowerCase();
+  const direccion = texto(formData, "direccion");
+  const producto = texto(formData, "producto");
+  const cantidad = Number(texto(formData, "cantidad"));
+  const totalTexto = texto(formData, "monto_total");
+  const anticipoTexto = texto(formData, "monto_anticipo");
+  const monto_total = monto(formData, "monto_total");
+  const monto_anticipo = monto(formData, "monto_anticipo");
+  const notas = texto(formData, "notas") || null;
+
+  if (!nombre_cliente || !nombre_negocio || !telefono || !email || !direccion || !producto) {
+    throw new Error("Nombre, negocio, teléfono, correo, dirección y producto son obligatorios.");
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("El correo no tiene un formato válido.");
+  if (telefono.replace(/\D/g, "").length < 10) throw new Error("El teléfono debe tener al menos 10 dígitos.");
+  if (!Number.isInteger(cantidad) || cantidad < 1) throw new Error("La cantidad debe ser un entero de al menos 1.");
+  if (!totalTexto || !anticipoTexto) throw new Error("El monto total y el anticipo son obligatorios.");
+  if (!Number.isFinite(monto_total) || monto_total < 0) throw new Error("El monto total no es válido.");
+  if (!Number.isFinite(monto_anticipo) || monto_anticipo < 0) throw new Error("El monto del anticipo no es válido.");
+  if (monto_anticipo > monto_total) throw new Error("El anticipo no puede ser mayor al total.");
+  if (existente.anticipo_pagado && monto_anticipo !== Number(existente.monto_anticipo)) {
+    throw new Error("No se puede cambiar el monto del anticipo después de confirmar el pago.");
+  }
+
+  const { error } = await supabase
+    .from("preventas")
+    .update({
+      nombre_cliente,
+      nombre_negocio,
+      telefono,
+      email,
+      direccion,
+      producto,
+      cantidad,
+      monto_total,
+      monto_anticipo,
+      notas,
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/dashboard/preventas");
+  revalidatePath(`/ticket/${existente.ticket_token}`);
+}
+
 // ---------------------------------------------------------------------
 // Gestión (solo Root/CEO): confirmar pago y cambiar estado
 // ---------------------------------------------------------------------
