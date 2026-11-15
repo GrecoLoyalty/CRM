@@ -358,6 +358,17 @@ export interface PreventasConfig {
   updated_at: string;
 }
 
+export interface PreventaCuenta {
+  id: string;
+  etiqueta: string | null;
+  banco: string;
+  titular: string;
+  clabe: string | null;
+  numero_cuenta: string | null;
+  activa: boolean;
+  orden: number;
+}
+
 export interface PreventaActualizacion {
   id: string;
   titulo: string;

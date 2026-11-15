@@ -6,12 +6,14 @@ import { es } from "date-fns/locale";
 import {
   ETAPAS_PREVENTA,
   type PreventaActualizacion,
+  type PreventaCuenta,
   type PreventasConfig,
 } from "@/lib/types";
+import GestionCuentasPago from "@/components/preventas/GestionCuentasPago";
 import {
   eliminarActualizacion,
   guardarAvanceGlobal,
-  guardarDatosBancarios,
+  guardarInstruccionesPago,
   publicarActualizacion,
 } from "@/app/dashboard/preventas/actions";
 
@@ -53,9 +55,11 @@ function Aviso({ m }: { m: { tipo: "ok" | "error"; texto: string } | null }) {
 
 export default function PanelGlobalPreventas({
   config,
+  cuentas,
   actualizaciones,
 }: {
   config: PreventasConfig;
+  cuentas: PreventaCuenta[];
   actualizaciones: PreventaActualizacion[];
 }) {
   const avance = useAccion();
@@ -94,9 +98,11 @@ export default function PanelGlobalPreventas({
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-gray-500">Datos bancarios</dt>
+            <dt className="text-xs text-gray-500">Cuentas de pago</dt>
             <dd className="mt-1 text-sm text-gray-200">
-              {config.clabe || config.numero_cuenta ? `${config.banco || "Banco"} · configurados` : (
+              {cuentas.filter((c) => c.activa).length > 0 ? (
+                `${cuentas.filter((c) => c.activa).length} cuenta(s) visibles`
+              ) : (
                 <span className="text-signal-warn">Faltan — el cliente no verá a dónde pagar</span>
               )}
             </dd>
@@ -134,48 +140,30 @@ export default function PanelGlobalPreventas({
             </div>
           </form>
 
-          {/* Datos bancarios */}
-          <form
-            action={(fd) => banco.correr(() => guardarDatosBancarios(fd), "Datos bancarios guardados.")}
-            className="grid grid-cols-1 gap-4 border-t border-base-700 pt-6 sm:grid-cols-2"
-          >
-            <h3 className="sm:col-span-2 text-sm font-medium text-gray-200">
-              Datos bancarios <span className="text-gray-500 font-normal">(solo se muestran a clientes que aún no pagan)</span>
-            </h3>
-            <div>
-              <label className="label-field" htmlFor="pg-banco">Banco</label>
-              <input id="pg-banco" name="banco" defaultValue={config.banco || ""} className="input-field" />
-            </div>
-            <div>
-              <label className="label-field" htmlFor="pg-titular">Titular de la cuenta</label>
-              <input id="pg-titular" name="titular" defaultValue={config.titular || ""} className="input-field" />
-            </div>
-            <div>
-              <label className="label-field" htmlFor="pg-clabe">CLABE (18 dígitos)</label>
-              <input id="pg-clabe" name="clabe" inputMode="numeric" maxLength={22} defaultValue={config.clabe || ""} className="input-field font-mono" />
-            </div>
-            <div>
-              <label className="label-field" htmlFor="pg-cuenta">Número de cuenta / tarjeta (opcional)</label>
-              <input id="pg-cuenta" name="numero_cuenta" defaultValue={config.numero_cuenta || ""} className="input-field font-mono" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="label-field" htmlFor="pg-instr">Instrucciones de pago (opcional)</label>
-              <textarea
-                id="pg-instr"
-                name="instrucciones_pago"
-                rows={2}
-                placeholder="Ej: Envía tu comprobante por WhatsApp al 55..."
-                defaultValue={config.instrucciones_pago || ""}
-                className="input-field"
-              />
-            </div>
-            <div className="sm:col-span-2 space-y-2">
+          {/* Cuentas de pago */}
+          <div className="border-t border-base-700 pt-6 space-y-6">
+            <GestionCuentasPago cuentas={cuentas} />
+            <form
+              action={(fd) => banco.correr(() => guardarInstruccionesPago(fd), "Instrucciones guardadas.")}
+              className="space-y-3"
+            >
+              <div>
+                <label className="label-field" htmlFor="pg-instr">Instrucciones de pago (opcional, se muestran bajo el carrusel)</label>
+                <textarea
+                  id="pg-instr"
+                  name="instrucciones_pago"
+                  rows={2}
+                  placeholder="Ej: Envía tu comprobante por WhatsApp al 55..."
+                  defaultValue={config.instrucciones_pago || ""}
+                  className="input-field"
+                />
+              </div>
               <Aviso m={banco.mensaje} />
-              <button type="submit" disabled={banco.guardando} className="btn-primary">
-                {banco.guardando ? "Guardando..." : "Guardar datos bancarios"}
+              <button type="submit" disabled={banco.guardando} className="btn-secondary">
+                {banco.guardando ? "Guardando..." : "Guardar instrucciones"}
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
 
           {/* Novedades */}
           <div className="border-t border-base-700 pt-6 space-y-4">

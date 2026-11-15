@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import FormularioPreventa from "@/components/preventas/FormularioPreventa";
 import ListaPreventas from "@/components/preventas/ListaPreventas";
 import PanelGlobalPreventas from "@/components/preventas/PanelGlobalPreventas";
-import { formatoMXN, type Preventa, type PreventasConfig, type PreventaActualizacion } from "@/lib/types";
+import { formatoMXN, type Preventa, type PreventasConfig, type PreventaActualizacion, type PreventaCuenta } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +22,17 @@ export default async function PreventasPage() {
   const puedeGestionar = rol === "root" || rol === "ceo";
 
   // RLS ya limita al vendedor a sus propias preventas.
-  const [{ data: preventasRaw }, { data: configRaw }, { data: actRaw }, { data: perfiles }] = await Promise.all([
+  const [{ data: preventasRaw }, { data: configRaw }, { data: actRaw }, { data: cuentasRaw }, { data: perfiles }] = await Promise.all([
     supabase.from("preventas").select("*").order("created_at", { ascending: false }),
     supabase.from("preventas_config").select("*").eq("id", "principal").single(),
     supabase.from("preventas_actualizaciones").select("*").order("created_at", { ascending: false }).limit(20),
+    supabase.from("preventas_cuentas").select("*").order("orden", { ascending: true }),
     supabase.from("perfiles").select("id, nombre_completo"),
   ]);
 
   const preventas = (preventasRaw || []) as Preventa[];
   const config = configRaw as PreventasConfig | null;
+  const cuentas = (cuentasRaw || []) as PreventaCuenta[];
   const actualizaciones = (actRaw || []) as PreventaActualizacion[];
   const vendedores = Object.fromEntries((perfiles || []).map((p) => [p.id, p.nombre_completo]));
 
@@ -67,7 +69,7 @@ export default async function PreventasPage() {
         </div>
       </div>
 
-      {esRoot && config && <PanelGlobalPreventas config={config} actualizaciones={actualizaciones} />}
+      {esRoot && config && <PanelGlobalPreventas config={config} cuentas={cuentas} actualizaciones={actualizaciones} />}
 
       <FormularioPreventa />
 

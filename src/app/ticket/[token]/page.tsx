@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { differenceInCalendarDays, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { createServiceClient } from "@/lib/supabase/server";
-import { ETAPAS_PREVENTA, formatoMXN } from "@/lib/types";
+import { ETAPAS_PREVENTA, formatoMXN, type PreventaCuenta } from "@/lib/types";
+import CarruselPago from "@/components/preventas/CarruselPago";
 
 // Ticket público de la preventa: sin login, entra por token único.
 // Dinámico para que el avance global (que Root cambia a mano) siempre
@@ -38,8 +39,9 @@ export default async function TicketPreventaPage({ params }: { params: { token: 
 
   if (!p) notFound();
 
-  const [{ data: config }, { data: novedades }] = await Promise.all([
+  const [{ data: config }, { data: cuentasRaw }, { data: novedades }] = await Promise.all([
     supabase.from("preventas_config").select("*").eq("id", "principal").single(),
+    supabase.from("preventas_cuentas").select("*").eq("activa", true).order("orden", { ascending: true }),
     supabase
       .from("preventas_actualizaciones")
       .select("id, titulo, mensaje, created_at")
@@ -56,7 +58,7 @@ export default async function TicketPreventaPage({ params }: { params: { token: 
   const diasRestantes = fechaEnvio ? differenceInCalendarDays(fechaEnvio, new Date()) : null;
 
   const saldo = Math.max(Number(p.monto_total) - Number(p.monto_anticipo), 0);
-  const hayDatosBancarios = Boolean(config?.clabe || config?.numero_cuenta);
+  const cuentas = (cuentasRaw || []) as PreventaCuenta[];
 
   return (
     <main className="min-h-screen bg-base-900 text-gray-100 px-4 sm:px-6 py-10">
@@ -125,22 +127,13 @@ export default async function TicketPreventaPage({ params }: { params: { token: 
               <h2 id="pago-heading" className="text-lg font-display font-semibold mt-1">
                 Anticipo a depositar: {formatoMXN(p.monto_anticipo)}
               </h2>
-              {hayDatosBancarios ? (
-                <dl className="mt-4 space-y-3 text-sm">
-                  {config?.banco && (
-                    <div className="flex justify-between gap-4"><dt className="text-gray-500">Banco</dt><dd className="text-gray-200 text-right">{config.banco}</dd></div>
-                  )}
-                  {config?.titular && (
-                    <div className="flex justify-between gap-4"><dt className="text-gray-500">Titular</dt><dd className="text-gray-200 text-right">{config.titular}</dd></div>
-                  )}
-                  {config?.clabe && (
-                    <div className="flex justify-between gap-4"><dt className="text-gray-500">CLABE</dt><dd className="text-gray-200 text-right font-mono select-all">{config.clabe}</dd></div>
-                  )}
-                  {config?.numero_cuenta && (
-                    <div className="flex justify-between gap-4"><dt className="text-gray-500">Cuenta / tarjeta</dt><dd className="text-gray-200 text-right font-mono select-all">{config.numero_cuenta}</dd></div>
-                  )}
-                  <div className="flex justify-between gap-4"><dt className="text-gray-500">Concepto / referencia</dt><dd className="text-gray-200 text-right font-mono select-all">{p.folio}</dd></div>
-                </dl>
+              {cuentas.length > 0 ? (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-400 mb-3">
+                    Haz tu transferencia a {cuentas.length > 1 ? "cualquiera de estas cuentas" : "esta cuenta"} y usa tu folio como referencia.
+                  </p>
+                  <CarruselPago cuentas={cuentas} folio={p.folio} monto={formatoMXN(p.monto_anticipo)} />
+                </div>
               ) : (
                 <p className="mt-3 text-sm text-gray-400">
                   Tu ejecutivo te compartirá los datos para realizar el depósito.
