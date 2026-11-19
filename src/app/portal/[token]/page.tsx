@@ -1,8 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { ESTADO_COLOR, DEPTO_LABEL, DEPTO_COLOR, type Depto } from "@/lib/types";
+import { ESTADO_COLOR, type Depto } from "@/lib/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import AgendaPortal, { type EventoPortal } from "@/components/portal/AgendaPortal";
+import CarruselEquipoPortal from "@/components/portal/CarruselEquipoPortal";
 
 // IMPORTANTE: esta página usa createServiceClient(), que es un cliente
 // "plano" de supabase-js (no usa cookies() ni ninguna API dinámica de
@@ -87,8 +89,7 @@ export default async function PortalClientePage({ params }: { params: { token: s
     .eq("cliente_id", cliente.id)
     .eq("visible_portal", true)
     .gte("fecha_fin", new Date().toISOString())
-    .order("fecha_inicio", { ascending: true })
-    .limit(6);
+    .order("fecha_inicio", { ascending: true });
 
   const materiales = await Promise.all(
     (materialesRaw || []).map(async (m) => {
@@ -102,12 +103,14 @@ export default async function PortalClientePage({ params }: { params: { token: s
   );
 
   const DEPTOS_ORDEN: Depto[] = ["ventas", "analisis", "estetica", "desarrollo"];
-  const equipoPorDepto = DEPTOS_ORDEN.map((depto) => ({
-    depto,
-    miembros: (equipoRaw || [])
-      .filter((f: any) => f.depto === depto && f.perfiles)
-      .map((f: any) => f.perfiles as { nombre_completo: string; avatar_url: string | null }),
-  })).filter((grupo) => grupo.miembros.length > 0);
+  const equipo = DEPTOS_ORDEN.flatMap((depto) =>
+    (equipoRaw || [])
+      .filter((fila: any) => fila.depto === depto && fila.perfiles)
+      .map((fila: any) => ({
+        depto,
+        ...(fila.perfiles as { nombre_completo: string; avatar_url: string | null }),
+      }))
+  );
 
   const indiceActual = ETAPAS_ORDEN.indexOf(cliente.estado);
   const historialPorEtapa = Object.fromEntries((historial || []).map((h) => [h.estado, h]));
@@ -201,93 +204,65 @@ export default async function PortalClientePage({ params }: { params: { token: s
           })}
         </ol>
 
-        <section className="mt-10" aria-labelledby="eventos-portal-heading">
-          <div className="mb-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Agenda del proyecto</p>
-            <h2 id="eventos-portal-heading" className="text-lg font-display font-semibold mt-1">Próximas reuniones</h2>
-          </div>
-          {eventosPortal && eventosPortal.length > 0 ? (
-            <ul className="divide-y divide-base-600 border-y border-base-600">
-              {eventosPortal.map((evento) => (
-                <li key={evento.id} className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-5 py-4">
-                  <div className="sm:w-44 shrink-0">
-                    <p className="text-sm font-medium text-accent-soft">
-                      {format(new Date(evento.fecha_inicio), evento.todo_el_dia ? "d MMM yyyy" : "d MMM yyyy · HH:mm", { locale: es })}
-                    </p>
-                    {!evento.todo_el_dia && (
-                      <p className="text-xs text-gray-500 mt-0.5">Termina {format(new Date(evento.fecha_fin), "HH:mm")}</p>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-medium text-gray-100">{evento.titulo}</h3>
-                    {evento.descripcion && <p className="text-sm text-gray-400 mt-1">{evento.descripcion}</p>}
-                    {evento.ubicacion && <p className="text-xs text-gray-500 mt-2">{evento.ubicacion}</p>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="border-y border-base-600 py-5 text-sm text-gray-500">No hay reuniones próximas compartidas.</p>
-          )}
-        </section>
+        <AgendaPortal eventos={(eventosPortal || []) as EventoPortal[]} />
 
-        {equipoPorDepto.length > 0 && (
-          <div className="card p-6 mt-8">
-            <p className="text-xs uppercase tracking-wide text-gray-500 mb-4">Tu equipo asignado</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {equipoPorDepto.map((grupo) => (
-                <div key={grupo.depto}>
-                  <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full mb-2 ${DEPTO_COLOR[grupo.depto]}`}>
-                    {DEPTO_LABEL[grupo.depto]}
-                  </span>
-                  <ul className="space-y-1.5">
-                    {grupo.miembros.map((m, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-gray-200">
-                        {m.avatar_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={m.avatar_url} alt={m.nombre_completo} className="w-6 h-6 rounded-full object-cover" />
-                        ) : (
-                          <span className="w-6 h-6 rounded-full bg-base-700 flex items-center justify-center text-[10px] text-gray-400">
-                            {m.nombre_completo.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                        {m.nombre_completo}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {equipo.length > 0 && <CarruselEquipoPortal miembros={equipo} />}
 
         {materiales.length > 0 && (
-          <div className="card p-6 mt-8">
-            <p className="text-xs uppercase tracking-wide text-gray-500 mb-4">Documentos y archivos de tu proyecto</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <section className="card p-5 sm:p-6 mt-8" aria-labelledby="materiales-portal-heading">
+            <div className="flex items-end justify-between gap-3 mb-5">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Archivos compartidos</p>
+                <h2 id="materiales-portal-heading" className="font-display font-semibold text-lg mt-1">
+                  Documentos de tu proyecto
+                </h2>
+              </div>
+              <span className="text-xs text-gray-500 shrink-0">{materiales.length} {materiales.length === 1 ? "archivo" : "archivos"}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {materiales.map((m) => (
-                <a
-                  key={m.id}
-                  href={m.url || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-base-800 border border-base-600 rounded-lg overflow-hidden hover:border-accent/40 transition-colors block"
-                >
-                  <div className="aspect-square bg-base-700 flex items-center justify-center overflow-hidden">
-                    {m.esImagen && m.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.url} alt={m.nombre_archivo} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-3xl">{m.link_url && !m.storage_path ? "🔗" : "📄"}</span>
-                    )}
+                <article key={m.id} className="group rounded-xl border border-base-600 bg-base-800/70 overflow-hidden hover:border-accent/50 transition-colors">
+                  {m.esImagen && m.url ? (
+                    <a href={m.url} target="_blank" rel="noopener noreferrer" className="block h-40 bg-base-900 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m.url} alt={m.nombre_archivo} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                    </a>
+                  ) : (
+                    <div className="h-28 bg-gradient-to-br from-accent/10 via-base-800 to-base-900 flex items-center justify-center border-b border-base-700">
+                      <div className="w-14 h-16 rounded-lg border border-base-500 bg-base-800 shadow-lg flex flex-col items-center justify-center gap-1">
+                        <span className="text-2xl">{m.link_url && !m.storage_path ? "↗" : "▤"}</span>
+                        <span className="text-[9px] font-semibold tracking-wide text-accent-soft">
+                          {m.link_url && !m.storage_path ? "LINK" : m.nombre_archivo.split(".").pop()?.slice(0, 5).toUpperCase() || "ARCHIVO"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-3.5">
+                    <p className="text-sm font-medium text-gray-100 truncate" title={m.nombre_archivo}>
+                      {m.nombre_archivo}
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-3">
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(m.created_at), "d MMM yyyy", { locale: es })}
+                      </p>
+                      {m.url ? (
+                        <a
+                          href={m.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-medium text-accent-soft hover:text-accent transition-colors shrink-0"
+                        >
+                          Ver archivo ↗
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-600 shrink-0">No disponible</span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-300 truncate px-2 py-1.5" title={m.nombre_archivo}>
-                    {m.nombre_archivo}
-                  </p>
-                </a>
+                </article>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         <p className="text-center text-xs text-gray-600 mt-12">
