@@ -125,6 +125,24 @@ export default async function PerfilClientePage({ params }: { params: { id: stri
         <p className="text-xs text-gray-600 mt-1 font-mono">{cliente.cliente_codigo}</p>
       </div>
 
+      {esRootOCeo && (
+        <section className="card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="font-display font-semibold text-sm">Portal del cliente</h2>
+            <p className="text-xs text-gray-500 mt-1">Comparte este enlace para que el cliente consulte el avance de su proyecto.</p>
+            <p className="text-xs text-accent-soft font-mono break-all mt-1">/portal/{cliente.portal_token}</p>
+          </div>
+          <Link
+            href={`/portal/${cliente.portal_token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary text-sm shrink-0"
+          >
+            Abrir portal ↗
+          </Link>
+        </section>
+      )}
+
       <ResponsablesCliente
         clienteId={cliente.id}
         vendedor={vendedor}
