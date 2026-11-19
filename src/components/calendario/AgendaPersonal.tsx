@@ -16,7 +16,13 @@ import {
 import { es } from "date-fns/locale";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { cambiarEstadoBloqueAgendaPersonal, crearBloqueAgendaPersonal, editarBloqueAgendaPersonal, eliminarBloqueAgendaPersonal } from "@/app/dashboard/calendario/actions";
+import {
+  asignarAsistenteAgendaPersonal,
+  cambiarEstadoBloqueAgendaPersonal,
+  crearBloqueAgendaPersonal,
+  editarBloqueAgendaPersonal,
+  eliminarBloqueAgendaPersonal,
+} from "@/app/dashboard/calendario/actions";
 import type { AgendaPersonal } from "@/lib/types";
 
 interface PerfilAgenda {
@@ -33,6 +39,13 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
   const [bloqueSeleccionado, setBloqueSeleccionado] = useState<AgendaPersonal | null>(null);
   const [formato, setFormato] = useState<"mes" | "agenda">("mes");
   const [avisoGoogle, setAvisoGoogle] = useState(false);
+  const [agendaId, setAgendaId] = useState(userId);
+  const [asistenteId, setAsistenteId] = useState("");
+  const [agendasDelegadas, setAgendasDelegadas] = useState<string[]>([]);
+  const [cargandoAccesos, setCargandoAccesos] = useState(true);
+  const [guardandoAcceso, setGuardandoAcceso] = useState(false);
+  const [errorAcceso, setErrorAcceso] = useState<string | null>(null);
+  const [mensajeAcceso, setMensajeAcceso] = useState<string | null>(null);
 
   function revisarSincronizacion(sincronizado: boolean | null | undefined) {
     setAvisoGoogle(sincronizado === false);
@@ -49,7 +62,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
     const { data } = await supabase
       .from("agenda_personal")
       .select("*")
-      .eq("perfil_id", userId)
+      .eq("perfil_id", agendaId)
       .lte("fecha_inicio", endOfMonth(mes).toISOString())
       .gte("fecha_fin", startOfMonth(mes).toISOString())
       .order("fecha_inicio");
@@ -57,23 +70,88 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
     setCargando(false);
   }
 
+  async function cargarAccesos() {
+    setCargandoAccesos(true);
+    const supabase = createClient();
+    const [{ data: propia, error: errorPropia }, { data: delegadas, error: errorDelegadas }] = await Promise.all([
+      supabase
+        .from("agenda_personal_asistentes")
+        .select("asistente_id")
+        .eq("titular_id", userId)
+        .maybeSingle(),
+      supabase
+        .from("agenda_personal_asistentes")
+        .select("titular_id")
+        .eq("asistente_id", userId),
+    ]);
+
+    if (errorPropia || errorDelegadas) {
+      setErrorAcceso(errorPropia?.message || errorDelegadas?.message || "No se pudieron cargar los permisos de agenda.");
+      setCargandoAccesos(false);
+      return;
+    }
+
+    setAsistenteId(propia?.asistente_id || "");
+    setAgendasDelegadas((delegadas || []).map((fila) => fila.titular_id));
+    setCargandoAccesos(false);
+  }
+
+  async function guardarAsistente() {
+    setGuardandoAcceso(true);
+    setErrorAcceso(null);
+    setMensajeAcceso(null);
+    try {
+      await asignarAsistenteAgendaPersonal(asistenteId || null);
+      setMensajeAcceso(asistenteId ? "La persona asignada ya puede gestionar tus bloques." : "Se quitó el acceso a tu agenda.");
+    } catch (error) {
+      setErrorAcceso(error instanceof Error ? error.message : "No se pudo actualizar el acceso a la agenda.");
+    } finally {
+      setGuardandoAcceso(false);
+    }
+  }
+
   useEffect(() => {
     cargar();
+    const supabase = createClient();
+    const canal = supabase
+      .channel(`agenda-personal-${agendaId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agenda_personal", filter: `perfil_id=eq.${agendaId}` },
+        () => cargar()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mes, userId]);
+  }, [mes, agendaId]);
+
+  useEffect(() => {
+    cargarAccesos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const bloquesDelDia = (dia: Date) => bloques.filter((bloque) => {
     const inicio = new Date(bloque.fecha_inicio);
     const fin = new Date(bloque.fecha_fin);
     return isSameDay(dia, inicio) || (dia >= inicio && dia <= fin);
   });
+  const nombreAgenda = agendaId === userId
+    ? "Mi calendario personal"
+    : `Agenda de ${perfiles.find((perfil) => perfil.id === agendaId)?.nombre_completo || "mi asistente"}`;
+  const puedeGestionarAgenda = agendaId === userId || agendasDelegadas.includes(agendaId);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Mi calendario personal</p>
-          <p className="text-sm text-gray-400">Marca cuándo estás ocupado o disponible para el equipo.</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500">{nombreAgenda}</p>
+          <p className="text-sm text-gray-400">
+            {agendaId === userId
+              ? "Marca cuándo estás ocupado o disponible para el equipo."
+              : "Tienes permiso para gestionar los bloques de esta agenda."}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-base-600 p-1 bg-base-900" role="group" aria-label="Formato de mi agenda">
@@ -84,6 +162,66 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
         </div>
       </div>
 
+      {agendasDelegadas.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <label htmlFor="agenda-delegada" className="text-sm text-gray-400">Ver agenda:</label>
+          <select
+            id="agenda-delegada"
+            value={agendaId}
+            onChange={(event) => {
+              setAgendaId(event.target.value);
+              setBloqueSeleccionado(null);
+            }}
+            className="input-field sm:max-w-sm"
+          >
+            <option value={userId}>Mi calendario personal</option>
+            {agendasDelegadas.map((titularId) => (
+              <option key={titularId} value={titularId}>
+                {perfiles.find((perfil) => perfil.id === titularId)?.nombre_completo || "Agenda asignada"}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {agendaId === userId && (
+        <section className="rounded-xl border border-base-600 bg-base-850 p-4">
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
+            <div className="flex-1">
+              <label htmlFor="asistente-agenda" className="label-field">Asistente de mi agenda</label>
+              <select
+                id="asistente-agenda"
+                value={asistenteId}
+                onChange={(event) => {
+                  setAsistenteId(event.target.value);
+                  setMensajeAcceso(null);
+                }}
+                disabled={cargandoAccesos}
+                className="input-field"
+              >
+                <option value="">Sin asistente asignado</option>
+                {perfiles.filter((perfil) => perfil.id !== userId).map((perfil) => (
+                  <option key={perfil.id} value={perfil.id}>{perfil.nombre_completo}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={guardarAsistente}
+              disabled={cargandoAccesos || guardandoAcceso}
+              className="btn-secondary text-sm shrink-0"
+            >
+              {guardandoAcceso ? "Guardando..." : "Guardar acceso"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            La persona asignada podrá ver, crear, editar y eliminar bloques. Los cambios se sincronizan con tu Google Calendar si está conectado.
+          </p>
+          {errorAcceso && <p role="alert" className="text-sm text-signal-urgent mt-2">{errorAcceso}</p>}
+          {mensajeAcceso && <p role="status" className="text-sm text-green-300 mt-2">{mensajeAcceso}</p>}
+        </section>
+      )}
+
       <div className="flex items-center gap-3">
         <button onClick={() => setMes((actual) => subMonths(actual, 1))} className="btn-secondary px-3 py-1.5 text-sm">←</button>
         <p className="font-display font-semibold capitalize w-40 text-center">{format(mes, "MMMM yyyy", { locale: es })}</p>
@@ -92,7 +230,15 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
 
       {avisoGoogle && (
         <p role="status" className="rounded-lg border border-signal-warn/35 bg-signal-warn/10 px-3 py-2 text-sm text-gray-300">
-          El bloque se guardó en el CRM, pero no se sincronizó con Google. <Link href="/dashboard/integraciones" className="text-accent-soft underline">Conecta o revisa tu cuenta de Google</Link> y vuelve a editar el bloque para reintentar.
+          {agendaId === userId ? (
+            <>
+              El bloque se guardó en el CRM, pero no se sincronizó con Google.{" "}
+              <Link href="/dashboard/integraciones" className="text-accent-soft underline">Conecta o revisa tu cuenta de Google</Link>{" "}
+              y vuelve a editar el bloque para reintentar.
+            </>
+          ) : (
+            "El bloque se guardó en el CRM, pero no se sincronizó con el Google Calendar del titular. El titular debe conectar o revisar su cuenta y volver a editar el bloque para reintentar."
+          )}
         </p>
       )}
 
@@ -140,13 +286,28 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
         </div>
       )}
 
-      {modalAbierto && <NuevoBloque onCerrar={() => setModalAbierto(false)} onGuardado={(sync) => { setModalAbierto(false); cargar(); revisarSincronizacion(sync); }} />}
-      {bloqueSeleccionado && <DetalleBloqueAgenda bloque={bloqueSeleccionado} onCerrar={() => setBloqueSeleccionado(null)} onDeleted={(sync) => { setBloqueSeleccionado(null); cargar(); revisarSincronizacion(sync); }} onUpdated={(sync) => { setBloqueSeleccionado(null); cargar(); revisarSincronizacion(sync); }} />}
+      {modalAbierto && (
+        <NuevoBloque
+          perfilId={agendaId}
+          nombreAgenda={nombreAgenda}
+          onCerrar={() => setModalAbierto(false)}
+          onGuardado={(sync) => { setModalAbierto(false); cargar(); revisarSincronizacion(sync); }}
+        />
+      )}
+      {bloqueSeleccionado && (
+        <DetalleBloqueAgenda
+          bloque={bloqueSeleccionado}
+          puedeGestionar={puedeGestionarAgenda}
+          onCerrar={() => setBloqueSeleccionado(null)}
+          onDeleted={(sync) => { setBloqueSeleccionado(null); cargar(); revisarSincronizacion(sync); }}
+          onUpdated={(sync) => { setBloqueSeleccionado(null); cargar(); revisarSincronizacion(sync); }}
+        />
+      )}
     </div>
   );
 }
 
-function DetalleBloqueAgenda({ bloque, onCerrar, onDeleted, onUpdated }: { bloque: AgendaPersonal; onCerrar: () => void; onDeleted: (sync: boolean | null) => void; onUpdated: (sync: boolean) => void }) {
+function DetalleBloqueAgenda({ bloque, puedeGestionar, onCerrar, onDeleted, onUpdated }: { bloque: AgendaPersonal; puedeGestionar: boolean; onCerrar: () => void; onDeleted: (sync: boolean | null) => void; onUpdated: (sync: boolean) => void }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -190,11 +351,13 @@ function DetalleBloqueAgenda({ bloque, onCerrar, onDeleted, onUpdated }: { bloqu
               {bloque.recordatorio && <div className="flex justify-between"><span className="text-gray-500">Recordatorio</span><span>{bloque.recordatorio}</span></div>}
               {bloque.notas && <div className="border-t border-base-600 pt-2"><span className="text-gray-500 block">Notas</span><span className="text-gray-300 whitespace-pre-wrap">{bloque.notas}</span></div>}
             </div>
-            <div className="flex flex-wrap gap-2 justify-end">
-              <button onClick={() => cambiarEstado(bloque.estado_bloque === "listo" ? "pendiente" : "listo")} className="btn-secondary px-3 py-1.5 text-xs">{bloque.estado_bloque === "listo" ? "↺ Pendiente" : "✓ Listo"}</button>
-              <button onClick={() => setEditing(true)} className="btn-secondary px-3 py-1.5 text-xs">✎ Editar</button>
-              <button onClick={eliminar} className="text-signal-urgent text-xs px-3 py-1.5 hover:underline">🗑 Eliminar</button>
-            </div>
+            {puedeGestionar && (
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button onClick={() => cambiarEstado(bloque.estado_bloque === "listo" ? "pendiente" : "listo")} className="btn-secondary px-3 py-1.5 text-xs">{bloque.estado_bloque === "listo" ? "↺ Pendiente" : "✓ Listo"}</button>
+                <button onClick={() => setEditing(true)} className="btn-secondary px-3 py-1.5 text-xs">✎ Editar</button>
+                <button onClick={eliminar} className="text-signal-urgent text-xs px-3 py-1.5 hover:underline">🗑 Eliminar</button>
+              </div>
+            )}
           </>
         ) : (
           <EditarBloqueForm bloque={bloque} onCancel={() => setEditing(false)} onSaved={(sync) => { setEditing(false); onUpdated(sync); }} />
@@ -243,7 +406,7 @@ function EditarBloqueForm({ bloque, onCancel, onSaved }: { bloque: AgendaPersona
   );
 }
 
-function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardado: (sync: boolean) => void }) {
+function NuevoBloque({ perfilId, nombreAgenda, onCerrar, onGuardado }: { perfilId: string; nombreAgenda: string; onCerrar: () => void; onGuardado: (sync: boolean) => void }) {
   const ahora = new Date();
   const [titulo, setTitulo] = useState("");
   const [inicio, setInicio] = useState(format(ahora, "yyyy-MM-dd'T'HH:mm"));
@@ -261,6 +424,7 @@ function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
     startTransition(async () => {
       try {
         const resultado = await crearBloqueAgendaPersonal({
+          perfilId,
           titulo,
           fechaInicio: new Date(inicio).toISOString(),
           fechaFin: new Date(fin).toISOString(),
@@ -279,7 +443,7 @@ function NuevoBloque({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onCerrar}>
       <div className="card w-full max-w-2xl p-5 space-y-3 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between"><h2 className="font-display font-semibold text-lg">Añadir a mi agenda</h2><button onClick={onCerrar} className="text-gray-500 text-xl">✕</button></div>
+        <div className="flex items-center justify-between"><h2 className="font-display font-semibold text-lg">Añadir a {nombreAgenda.toLowerCase()}</h2><button onClick={onCerrar} className="text-gray-500 text-xl">✕</button></div>
         <div><label className="label-field">Título</label><input value={titulo} onChange={(e) => setTitulo(e.target.value)} className="input-field" placeholder="Ej. Grabación, comida, libre" /></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label-field">Inicia</label><input type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} className="input-field" /></div><div><label className="label-field">Termina</label><input type="datetime-local" value={fin} onChange={(e) => setFin(e.target.value)} className="input-field" /></div></div>
         <div><label className="label-field">Estado</label><select value={estado} onChange={(e) => setEstado(e.target.value as "ocupado" | "disponible")} className="input-field"><option value="ocupado">Ocupado</option><option value="disponible">Disponible</option></select></div>

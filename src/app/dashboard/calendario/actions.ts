@@ -33,7 +33,45 @@ interface EventoInput {
   invitados: string[]; // ids de perfiles (sin contar al creador)
 }
 
-type AgendaPersonalInput = AgendaPersonalGoogleInput;
+type AgendaPersonalInput = AgendaPersonalGoogleInput & {
+  perfilId?: string;
+};
+
+export async function asignarAsistenteAgendaPersonal(asistenteId: string | null) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  if (asistenteId === user.id) {
+    throw new Error("No puedes asignarte como asistente de tu propia agenda.");
+  }
+
+  if (asistenteId) {
+    const { data: asistente, error: errorPerfil } = await supabase
+      .from("perfiles")
+      .select("id")
+      .eq("id", asistenteId)
+      .eq("activo", true)
+      .maybeSingle();
+    if (errorPerfil) throw new Error(errorPerfil.message);
+    if (!asistente) throw new Error("La persona seleccionada no está activa en el CRM.");
+
+    const { error } = await supabase
+      .from("agenda_personal_asistentes")
+      .upsert({ titular_id: user.id, asistente_id: asistenteId }, { onConflict: "titular_id" });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("agenda_personal_asistentes")
+      .delete()
+      .eq("titular_id", user.id);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/dashboard/calendario");
+}
 
 export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
   const supabase = createClient();
@@ -44,8 +82,20 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     throw new Error("La fecha de fin debe ser posterior a la de inicio.");
   }
 
+  const perfilId = input.perfilId || user.id;
+  if (perfilId !== user.id) {
+    const { data: asignacion, error: errorAsignacion } = await supabase
+      .from("agenda_personal_asistentes")
+      .select("titular_id")
+      .eq("titular_id", perfilId)
+      .eq("asistente_id", user.id)
+      .maybeSingle();
+    if (errorAsignacion) throw new Error(errorAsignacion.message);
+    if (!asignacion) throw new Error("No tienes permiso para añadir bloques a esta agenda.");
+  }
+
   const { data, error } = await supabase.from("agenda_personal").insert({
-    perfil_id: user.id,
+    perfil_id: perfilId,
     titulo: input.titulo.trim(),
     fecha_inicio: input.fechaInicio,
     fecha_fin: input.fechaFin,
@@ -57,7 +107,7 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     recordatorio: input.recordatorio?.trim() || null,
   }).select().single();
   if (error) throw new Error(error.message);
-  const sync = await sincronizarBloqueGoogle(user.id, input);
+  const sync = await sincronizarBloqueGoogle(perfilId, input);
   let googleEventId = sync.googleEventId;
   let googleSincronizado = sync.sincronizado;
   if (googleEventId) {
