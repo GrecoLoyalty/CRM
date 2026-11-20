@@ -46,6 +46,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
   const [guardandoAcceso, setGuardandoAcceso] = useState(false);
   const [errorAcceso, setErrorAcceso] = useState<string | null>(null);
   const [mensajeAcceso, setMensajeAcceso] = useState<string | null>(null);
+  const idsAgendasDelegadas = agendasDelegadas.join(",");
 
   function revisarSincronizacion(sincronizado: boolean | null | undefined) {
     setAvisoGoogle(sincronizado === false);
@@ -72,6 +73,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
 
   async function cargarAccesos() {
     setCargandoAccesos(true);
+    setErrorAcceso(null);
     const supabase = createClient();
     const [{ data: propia, error: errorPropia }, { data: delegadas, error: errorDelegadas }] = await Promise.all([
       supabase
@@ -87,6 +89,7 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
 
     if (errorPropia || errorDelegadas) {
       setErrorAcceso(errorPropia?.message || errorDelegadas?.message || "No se pudieron cargar los permisos de agenda.");
+      setAgendasDelegadas([]);
       setCargandoAccesos(false);
       return;
     }
@@ -129,8 +132,32 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
 
   useEffect(() => {
     cargarAccesos();
+    const supabase = createClient();
+    let canal = supabase
+      .channel(`agenda-asistentes-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agenda_personal_asistentes", filter: `titular_id=eq.${userId}` },
+        () => cargarAccesos()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agenda_personal_asistentes", filter: `asistente_id=eq.${userId}` },
+        () => cargarAccesos()
+      );
+    for (const titularId of agendasDelegadas) {
+      canal = canal.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agenda_personal_asistentes", filter: `titular_id=eq.${titularId}` },
+        () => cargarAccesos()
+      );
+    }
+    canal.subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, idsAgendasDelegadas]);
 
   const bloquesDelDia = (dia: Date) => bloques.filter((bloque) => {
     const inicio = new Date(bloque.fecha_inicio);
@@ -162,26 +189,33 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
         </div>
       </div>
 
-      {agendasDelegadas.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <label htmlFor="agenda-delegada" className="text-sm text-gray-400">Ver agenda:</label>
-          <select
-            id="agenda-delegada"
-            value={agendaId}
-            onChange={(event) => {
-              setAgendaId(event.target.value);
-              setBloqueSeleccionado(null);
-            }}
-            className="input-field sm:max-w-sm"
-          >
-            <option value={userId}>Mi calendario personal</option>
-            {agendasDelegadas.map((titularId) => (
-              <option key={titularId} value={titularId}>
-                {perfiles.find((perfil) => perfil.id === titularId)?.nombre_completo || "Agenda asignada"}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <label htmlFor="agenda-delegada" className="text-sm text-gray-400">Calendario:</label>
+        <select
+          id="agenda-delegada"
+          value={agendaId}
+          onChange={(event) => {
+            setAgendaId(event.target.value);
+            setBloqueSeleccionado(null);
+          }}
+          className="input-field sm:max-w-sm"
+        >
+          <option value={userId}>Mi calendario personal</option>
+          {agendasDelegadas.map((titularId) => (
+            <option key={titularId} value={titularId}>
+              {perfiles.find((perfil) => perfil.id === titularId)?.nombre_completo || "Agenda asignada"}
+            </option>
+          ))}
+        </select>
+        {!cargandoAccesos && !errorAcceso && agendasDelegadas.length === 0 && agendaId === userId && (
+          <p className="text-xs text-gray-500">
+            Cuando alguien te asigne como asistente, su agenda aparecerá aquí.
+          </p>
+        )}
+      </div>
+
+      {errorAcceso && (
+        <p role="alert" className="text-sm text-signal-urgent">{errorAcceso}</p>
       )}
 
       {agendaId === userId && (
@@ -217,7 +251,6 @@ export default function AgendaPersonal({ perfiles, userId }: { perfiles: PerfilA
           <p className="text-xs text-gray-500 mt-2">
             La persona asignada podrá ver, crear, editar y eliminar bloques. Los cambios se sincronizan con tu Google Calendar si está conectado.
           </p>
-          {errorAcceso && <p role="alert" className="text-sm text-signal-urgent mt-2">{errorAcceso}</p>}
           {mensajeAcceso && <p role="status" className="text-sm text-green-300 mt-2">{mensajeAcceso}</p>}
         </section>
       )}

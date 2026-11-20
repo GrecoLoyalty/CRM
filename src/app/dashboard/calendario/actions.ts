@@ -114,7 +114,7 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     const { error: errorId } = await supabase.from("agenda_personal").update({ google_event_id: googleEventId }).eq("id", data.id);
     if (errorId) {
       console.error("[agenda-personal] No se pudo guardar el ID Google:", errorId.message);
-      await eliminarEventoGoogle(user.id, googleEventId);
+      await eliminarEventoGoogle(perfilId, googleEventId);
       googleEventId = null;
       googleSincronizado = false;
     }
