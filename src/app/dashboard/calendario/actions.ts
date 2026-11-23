@@ -37,6 +37,13 @@ type AgendaPersonalInput = AgendaPersonalGoogleInput & {
   perfilId?: string;
 };
 
+type ResultadoAgendaPersonal = {
+  ok: boolean;
+  error?: string;
+  data?: Record<string, unknown>;
+  googleSincronizado?: boolean | null;
+};
+
 export async function asignarAsistenteAgendaPersonal(asistenteId: string | null) {
   const supabase = createClient();
   const {
@@ -76,10 +83,16 @@ export async function asignarAsistenteAgendaPersonal(asistenteId: string | null)
 export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
-  if (!input.titulo.trim()) throw new Error("El bloque necesita un título.");
-  if (new Date(input.fechaFin) <= new Date(input.fechaInicio)) {
-    throw new Error("La fecha de fin debe ser posterior a la de inicio.");
+  if (!user) return { ok: false, error: "No autenticado" };
+  if (!input.titulo.trim()) return { ok: false, error: "El bloque necesita un título." };
+
+  const fechaInicio = new Date(input.fechaInicio);
+  const fechaFin = new Date(input.fechaFin);
+  if (Number.isNaN(fechaInicio.getTime()) || Number.isNaN(fechaFin.getTime())) {
+    return { ok: false, error: "Las fechas del bloque no son válidas." };
+  }
+  if (fechaFin <= fechaInicio) {
+    return { ok: false, error: "La fecha de fin debe ser posterior a la de inicio." };
   }
 
   const perfilId = input.perfilId || user.id;
@@ -90,8 +103,8 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
       .eq("titular_id", perfilId)
       .eq("asistente_id", user.id)
       .maybeSingle();
-    if (errorAsignacion) throw new Error(errorAsignacion.message);
-    if (!asignacion) throw new Error("No tienes permiso para añadir bloques a esta agenda.");
+    if (errorAsignacion) return { ok: false, error: errorAsignacion.message };
+    if (!asignacion) return { ok: false, error: "No tienes permiso para añadir bloques a esta agenda." };
   }
 
   const { data, error } = await supabase.from("agenda_personal").insert({
@@ -106,7 +119,7 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     alguien_ira_conmigo: input.alguienIraConmigo?.trim() || null,
     recordatorio: input.recordatorio?.trim() || null,
   }).select().single();
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: `No se pudo guardar el bloque: ${error.message}` };
   const sync = await sincronizarBloqueGoogle(perfilId, input);
   let googleEventId = sync.googleEventId;
   let googleSincronizado = sync.sincronizado;
@@ -120,19 +133,25 @@ export async function crearBloqueAgendaPersonal(input: AgendaPersonalInput) {
     }
   }
   revalidatePath("/dashboard/calendario");
-  return { ...data, google_event_id: googleEventId, googleSincronizado };
+  return { ok: true, data: { ...data, google_event_id: googleEventId }, googleSincronizado };
 }
 
 export async function editarBloqueAgendaPersonal(id: string, input: AgendaPersonalInput) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
-  if (!input.titulo.trim()) throw new Error("El bloque necesita un título.");
-  if (new Date(input.fechaFin) <= new Date(input.fechaInicio)) {
-    throw new Error("La fecha de fin debe ser posterior a la de inicio.");
+  if (!user) return { ok: false, error: "No autenticado" };
+  if (!input.titulo.trim()) return { ok: false, error: "El bloque necesita un título." };
+
+  const fechaInicio = new Date(input.fechaInicio);
+  const fechaFin = new Date(input.fechaFin);
+  if (Number.isNaN(fechaInicio.getTime()) || Number.isNaN(fechaFin.getTime())) {
+    return { ok: false, error: "Las fechas del bloque no son válidas." };
+  }
+  if (fechaFin <= fechaInicio) {
+    return { ok: false, error: "La fecha de fin debe ser posterior a la de inicio." };
   }
 
-  const payload: Record<string, any> = {
+  const payload = {
     titulo: input.titulo.trim(),
     fecha_inicio: input.fechaInicio,
     fecha_fin: input.fechaFin,
@@ -145,7 +164,7 @@ export async function editarBloqueAgendaPersonal(id: string, input: AgendaPerson
   };
 
   const { data, error } = await supabase.from("agenda_personal").update(payload).eq("id", id).select().single();
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: `No se pudo guardar el bloque: ${error.message}` };
   const sync = await sincronizarBloqueGoogle(data.perfil_id, input, data.google_event_id);
   let googleEventId = sync.googleEventId;
   let googleSincronizado = sync.sincronizado;
@@ -159,7 +178,7 @@ export async function editarBloqueAgendaPersonal(id: string, input: AgendaPerson
     }
   }
   revalidatePath("/dashboard/calendario");
-  return { ...data, google_event_id: googleEventId, googleSincronizado };
+  return { ok: true, data: { ...data, google_event_id: googleEventId }, googleSincronizado };
 }
 
 export async function cambiarEstadoBloqueAgendaPersonal(id: string, estadoBloque: "pendiente" | "listo") {

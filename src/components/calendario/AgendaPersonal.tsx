@@ -417,8 +417,12 @@ function EditarBloqueForm({ bloque, onCancel, onSaved }: { bloque: AgendaPersona
     startTransition(async () => {
       try {
         const resultado = await editarBloqueAgendaPersonal(bloque.id, { titulo, fechaInicio: new Date(inicio).toISOString(), fechaFin: new Date(fin).toISOString(), estado, estadoBloque, notas, ubicacion, alguienIraConmigo, recordatorio });
-        onSaved(resultado.googleSincronizado);
-      } catch (e: any) { setError(e.message || "No se pudo guardar el bloque."); }
+        if (!resultado.ok) {
+          setError(resultado.error || "No se pudo guardar el bloque.");
+          return;
+        }
+        onSaved(resultado.googleSincronizado || false);
+      } catch (e: unknown) { setError(e instanceof Error ? e.message : "No se pudo guardar el bloque."); }
     });
   }
 
@@ -468,8 +472,12 @@ function NuevoBloque({ perfilId, nombreAgenda, onCerrar, onGuardado }: { perfilI
           alguienIraConmigo: alguienIraConmigo,
           recordatorio,
         });
-        onGuardado(resultado.googleSincronizado);
-      } catch (e: any) { setError(e.message || "No se pudo guardar el bloque."); }
+        if (!resultado.ok) {
+          setError(resultado.error || "No se pudo guardar el bloque.");
+          return;
+        }
+        onGuardado(resultado.googleSincronizado || false);
+      } catch (e: unknown) { setError(e instanceof Error ? e.message : "No se pudo guardar el bloque."); }
     });
   }
 
