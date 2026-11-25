@@ -58,6 +58,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
   const [modal, setModal] = useState(false);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [arrastrada, setArrastrada] = useState("");
 
   const marcasActivas = marcas.filter((m) => m.activa);
@@ -172,11 +173,59 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
       ? `${dias[0].toLocaleDateString("es-MX", { day: "numeric", month: "short" })} – ${dias[6].toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}`
       : "Contenido de esta y la próxima semana";
 
+  async function descargarPDF() {
+    setDescargandoPDF(true);
+    setError("");
+    try {
+      const { pdf } = await import("@react-pdf/renderer");
+      const { CalendarioContenidoPDF } = await import("@/lib/pdf/CalendarioContenidoPDF");
+      const inicio = fechaLocal(dias[0]);
+      const fin = fechaLocal(dias[dias.length - 1]);
+      const publicacionesPDF = filtradas
+        .filter((pub) => {
+          const dia = fechaLocal(new Date(pub.fecha_hora));
+          return dia >= inicio && dia <= fin;
+        })
+        .sort((a, b) => a.fecha_hora.localeCompare(b.fecha_hora))
+        .map((pub) => ({
+          fecha_hora: pub.fecha_hora,
+          marca: marcas.find((m) => m.id === pub.marca_id)?.nombre || "Marca",
+          plataforma: pub.plataforma,
+          estado: pub.estado,
+          responsable: perfiles.find((p) => p.id === pub.responsable_id)?.nombre_completo || "Sin asignar",
+          guion: guiones.find((g) => g.id === pub.guion_id)?.titulo || "",
+          caption: pub.caption,
+          hashtags: pub.hashtags,
+        }));
+      const blob = await pdf(
+        <CalendarioContenidoPDF titulo={tituloRango} publicaciones={publicacionesPDF} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = `calendario-contenido-${inicio}-${fin}.pdf`;
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      console.error("[marketing] No se pudo descargar el calendario en PDF:", e);
+      setError("No se pudo generar el PDF del calendario.");
+    } finally {
+      setDescargandoPDF(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h2 className="text-xl font-display font-semibold">Calendario de contenido</h2><p className="text-sm text-gray-500 mt-1">Planea publicaciones para todas tus marcas.</p></div>
-        <button className="btn-primary" onClick={nuevo} disabled={!marcasActivas.length}>Programar contenido</button>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-ghost" onClick={descargarPDF} disabled={descargandoPDF}>
+            {descargandoPDF ? "Generando PDF…" : "Descargar PDF"}
+          </button>
+          <button className="btn-primary" onClick={nuevo} disabled={!marcasActivas.length}>Programar contenido</button>
+        </div>
       </div>
       <div className="card p-3 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
