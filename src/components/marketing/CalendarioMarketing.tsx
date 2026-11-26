@@ -181,6 +181,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
       const { CalendarioContenidoPDF } = await import("@/lib/pdf/CalendarioContenidoPDF");
       const inicio = fechaLocal(dias[0]);
       const fin = fechaLocal(dias[dias.length - 1]);
+      const rangoPDF = `${dias[0].toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })} – ${dias[dias.length - 1].toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}`;
       const publicacionesPDF = filtradas
         .filter((pub) => {
           const dia = fechaLocal(new Date(pub.fecha_hora));
@@ -188,6 +189,7 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
         })
         .sort((a, b) => a.fecha_hora.localeCompare(b.fecha_hora))
         .map((pub) => ({
+          dia: fechaLocal(new Date(pub.fecha_hora)),
           fecha_hora: pub.fecha_hora,
           marca: marcas.find((m) => m.id === pub.marca_id)?.nombre || "Marca",
           plataforma: pub.plataforma,
@@ -198,7 +200,12 @@ export default function CalendarioMarketing({ marcas, perfiles, guiones, publica
           hashtags: pub.hashtags,
         }));
       const blob = await pdf(
-        <CalendarioContenidoPDF titulo={tituloRango} publicaciones={publicacionesPDF} />
+        <CalendarioContenidoPDF
+          titulo={tituloRango}
+          rango={rangoPDF}
+          dias={dias.map(fechaLocal)}
+          publicaciones={publicacionesPDF}
+        />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
