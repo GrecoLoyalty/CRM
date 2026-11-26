@@ -68,21 +68,22 @@ const styles = StyleSheet.create({
   eventName: { fontSize: 6, color: COLOR_INK, marginTop: 1 },
   moreEvents: { fontSize: 6, color: COLOR_MUTED, marginTop: 1 },
   detail: {
-    flexDirection: "row",
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLOR_LINE,
   },
+  detailsContent: {
+    paddingTop: 48,
+  },
   detailDate: {
-    width: "17%",
-    paddingRight: 10,
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: COLOR_ACCENT,
+    marginBottom: 3,
   },
-  detailBody: { width: "83%" },
-  detailTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", marginBottom: 3 },
-  detailMeta: { fontSize: 8, color: "#4B5563", marginBottom: 3 },
+  detailBody: { width: "100%" },
+  detailTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", marginBottom: 4 },
+  detailMeta: { fontSize: 8, color: "#4B5563", marginBottom: 4 },
   detailCaption: { fontSize: 8, lineHeight: 1.35, marginTop: 3 },
   empty: { fontSize: 9, color: COLOR_MUTED, paddingVertical: 12 },
   footer: {
@@ -190,36 +191,38 @@ export function CalendarioContenidoPDF({
           <Text style={styles.title}>Detalle de publicaciones</Text>
           <Text style={styles.subtitle}>{rango} · GRESANOVA OS</Text>
         </View>
-        {publicaciones.length === 0 ? (
-          <Text style={styles.empty}>No hay publicaciones en este periodo con los filtros seleccionados.</Text>
-        ) : (
-          publicaciones.map((publicacion, index) => (
-            <View key={`${publicacion.fecha_hora}-${index}`} style={styles.detail}>
-              <Text style={styles.detailDate}>
-                {formatearFecha(publicacion.fecha_hora)}
-                {"\n"}
-                {formatearHora(publicacion.fecha_hora)}
-              </Text>
-              <View style={styles.detailBody}>
-                <Text style={styles.detailTitle}>
-                  {publicacion.marca} · {publicacion.plataforma}
+        <View style={styles.detailsContent}>
+          {publicaciones.length === 0 ? (
+            <Text style={styles.empty}>No hay publicaciones en este periodo con los filtros seleccionados.</Text>
+          ) : (
+            publicaciones.map((publicacion, index) => (
+              <View key={`${publicacion.fecha_hora}-${index}`} style={styles.detail}>
+                <Text style={styles.detailDate}>
+                  {formatearFecha(publicacion.fecha_hora)} · {formatearHora(publicacion.fecha_hora)}
                 </Text>
-                <Text style={styles.detailMeta}>
-                  Estado: {publicacion.estado} · Responsable: {publicacion.responsable}
-                  {publicacion.guion ? ` · Guion: ${publicacion.guion}` : ""}
-                </Text>
-                {publicacion.caption && (
-                  <Text style={styles.detailCaption}>{publicacion.caption}</Text>
-                )}
-                {publicacion.hashtags.length > 0 && (
-                  <Text style={styles.detailMeta}>
-                    {publicacion.hashtags.map((tag) => `#${tag}`).join(" ")}
+                <View style={styles.detailBody}>
+                  <Text style={styles.detailTitle}>
+                    {publicacion.marca} · {publicacion.plataforma}
                   </Text>
-                )}
+                  <Text style={styles.detailMeta}>
+                    Estado: {publicacion.estado} · Responsable: {publicacion.responsable}
+                  </Text>
+                  {publicacion.guion && (
+                    <Text style={styles.detailMeta}>Guion: {publicacion.guion}</Text>
+                  )}
+                  {publicacion.caption && (
+                    <Text style={styles.detailCaption}>{publicacion.caption}</Text>
+                  )}
+                  {publicacion.hashtags.length > 0 && (
+                    <Text style={styles.detailMeta}>
+                      {publicacion.hashtags.map((tag) => `#${tag}`).join(" ")}
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
-          ))
-        )}
+            ))
+          )}
+        </View>
         <Text
           style={styles.footer}
           fixed
